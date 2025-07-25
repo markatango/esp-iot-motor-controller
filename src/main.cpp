@@ -1,6 +1,7 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <WiFiClientSecure.h>
+
 #include "secrets.h"  // Include your secrets header for WiFi and MQTT credentials
 
 // // WiFi credentials
@@ -17,6 +18,10 @@ const int mqtt_port = MQTT_PORT;
 // WiFi and MQTT client initialization
 WiFiClientSecure esp_client;
 PubSubClient mqtt_client(esp_client);
+
+// For non-tls connections, you can use the regular WiFiClient
+// WiFiClient espClient;
+// PubSubClient mqtt_client(espClient);
 
 // Root CA Certificate
 // Load DigiCert Global Root G2, which is used by EMQX Public Broker: broker.emqx.io
@@ -47,8 +52,7 @@ PubSubClient mqtt_client(esp_client);
 
 // Load DigiCert Global Root CA ca_cert, which is used by EMQX Cloud Serverless Deployment
 
-const char* ca_cert = R"EOF(
------BEGIN CERTIFICATE-----
+const char* ca_cert = R"EOF(-----BEGIN CERTIFICATE-----
 MIIDrzCCApegAwIBAgIQCDvgVpBCRrGhdWrJWZHHSjANBgkqhkiG9w0BAQUFADBh
 MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3
 d3cuZGlnaWNlcnQuY29tMSAwHgYDVQQDExdEaWdpQ2VydCBHbG9iYWwgUm9vdCBD
@@ -71,7 +75,6 @@ YSEY1QSteDwsOoBrp+uvFRTp2InBuThs4pFsiv9kuXclVzDAGySj4dzp30d8tbQk
 CAUw7C29C79Fv1C5qfPrmAESrciIxpg0X40KPMbp1ZWVbd4=
 -----END CERTIFICATE-----
 )EOF";
-
 
 // Function Declarations
 void connectToWiFi();
@@ -105,12 +108,15 @@ void connectToWiFi() {
 }
 
 void connectToMQTT() {
+    Serial.printf("Connecting to MQTT Broker at %s:%d\n", mqtt_broker, mqtt_port);
     while (!mqtt_client.connected()) {
         String client_id = "esp32-client-" + String(WiFi.macAddress());
         Serial.printf("Connecting to MQTT Broker as %s...\n", client_id.c_str());
         if (mqtt_client.connect(client_id.c_str(), mqtt_username, mqtt_password)) {
             Serial.println("Connected to MQTT broker");
+        
             mqtt_client.subscribe(mqtt_topic);
+            Serial.printf("Subscribed to topic: %s\n", mqtt_topic);
             mqtt_client.publish(mqtt_topic, "Hi EMQX I'm ESP32 ^^");  // Publish message upon connection
         } else {
             Serial.print("Failed to connect to MQTT broker, rc=");
@@ -119,6 +125,7 @@ void connectToMQTT() {
             delay(5000);
         }
     }
+
 }
 
 void mqttCallback(char *topic, byte *payload, unsigned int length) {
@@ -129,6 +136,10 @@ void mqttCallback(char *topic, byte *payload, unsigned int length) {
         Serial.print((char) payload[i]);
     }
     Serial.println("\n-----------------------");
+
+    // uncomment the following line to publish a message back to the topic
+    // delay(1000);  // Delay to avoid flooding the serial output
+    // mqtt_client.publish(mqtt_topic, "Repeating myself...c ^^");  // Publish message upon connection
 }
 
 
