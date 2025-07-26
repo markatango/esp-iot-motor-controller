@@ -3,6 +3,7 @@
 #include <WiFiClientSecure.h>
 
 #include "secrets.h"  // Include your secrets header for WiFi and MQTT credentials
+#include "io.h"  // Include your IO header for LED control
 
 // // WiFi credentials
 const char *ssid = SSID;             // Replace with your WiFi name
@@ -132,14 +133,20 @@ void mqttCallback(char *topic, byte *payload, unsigned int length) {
     Serial.print("Message received on topic: ");
     Serial.println(topic);
     Serial.print("Message: ");
-    for (unsigned int i = 0; i < length; i++) {
-        Serial.print((char) payload[i]);
-    }
+    char * str_payload = (char *) payload;
+    str_payload[length] = '\0';  // Null-terminate the payload for printing
+    Serial.println(str_payload);
+
     Serial.println("\n-----------------------");
+    if (strcmp(str_payload, "ON") == 0) {
+        led(1);  // Turn on LED
+    } else if (strcmp(str_payload, "OFF") == 0) {
+        led(0);  // Turn off LED
+    } 
 
     // uncomment the following line to publish a message back to the topic
-    // delay(1000);  // Delay to avoid flooding the serial output
-    // mqtt_client.publish(mqtt_topic, "Repeating myself...c ^^");  // Publish message upon connection
+    delay(1000);  // Delay to avoid flooding the serial output
+    mqtt_client.publish(mqtt_topic, "ON");  // Publish message upon connection
 }
 
 
