@@ -4,6 +4,8 @@
 
 #include "secrets.h"  // Include your secrets header for WiFi and MQTT credentials
 #include "io.h"  // Include your IO header for LED control
+#include "main.h"   // Include your main header for function declarations
+#include "mqtt.h"  // Include your MQTT header for MQTT functions   
 
 // // WiFi credentials
 const char *ssid = SSID;             // Replace with your WiFi name
@@ -77,12 +79,7 @@ CAUw7C29C79Fv1C5qfPrmAESrciIxpg0X40KPMbp1ZWVbd4=
 -----END CERTIFICATE-----
 )EOF";
 
-// Function Declarations
-void connectToWiFi();
 
-void connectToMQTT();
-
-void mqttCallback(char *topic, byte *payload, unsigned int length);
 
 
 void setup() {
@@ -118,7 +115,7 @@ void connectToMQTT() {
         
             mqtt_client.subscribe(mqtt_topic);
             Serial.printf("Subscribed to topic: %s\n", mqtt_topic);
-            mqtt_client.publish(mqtt_topic, "Hi EMQX I'm ESP32 ^^");  // Publish message upon connection
+            mqtt_client.publish(mqtt_topic, "ON");  // Publish message upon connection
         } else {
             Serial.print("Failed to connect to MQTT broker, rc=");
             Serial.print(mqtt_client.state());
@@ -126,27 +123,35 @@ void connectToMQTT() {
             delay(5000);
         }
     }
-
 }
 
-void mqttCallback(char *topic, byte *payload, unsigned int length) {
+
+void mqttCallback(char *topic, unsigned char * payload, unsigned int length) {
     Serial.print("Message received on topic: ");
     Serial.println(topic);
     Serial.print("Message: ");
     char * str_payload = (char *) payload;
-    str_payload[length] = '\0';  // Null-terminate the payload for printing
+    str_payload[length] = '\0';  // Null-terminate the payload to make it a valid string
     Serial.println(str_payload);
-
     Serial.println("\n-----------------------");
-    if (strcmp(str_payload, "ON") == 0) {
-        led(1);  // Turn on LED
-    } else if (strcmp(str_payload, "OFF") == 0) {
-        led(0);  // Turn off LED
-    } 
 
-    // uncomment the following line to publish a message back to the topic
-    delay(1000);  // Delay to avoid flooding the serial output
-    mqtt_client.publish(mqtt_topic, "ON");  // Publish message upon connection
+    processResponse(topic, str_payload);
+}
+
+void processResponse(const char *topic, const char *payload) {
+    Serial.printf("Processing response for topic: %s\n", topic);
+    Serial.printf("Payload: %s\n", payload);
+    
+    if (strcmp(payload, "ON") == 0) {
+        led(1);  // Turn on LED
+        mqtt_client.publish(mqtt_topic, "OFF");
+    } else if (strcmp(payload, "OFF") == 0) {
+        led(0);  // Turn off LED
+        mqtt_client.publish(mqtt_topic, "ON");
+    } else {
+        Serial.println("Unknown command received.");
+    }
+    delay(1000);  // Delay to allow for processing
 }
 
 
