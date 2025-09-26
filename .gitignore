@@ -2,4 +2,5 @@
 .vscode/
 .vscode/ipch
 secrets.h
-
+commands.txt
+documentation/

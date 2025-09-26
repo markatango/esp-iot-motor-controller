@@ -18,9 +18,11 @@ const char *mqtt_username = MQTT_USERNAME;
 const char *mqtt_password = MQTT_PASSWORD;
 const int mqtt_port = MQTT_PORT;
 
-// WiFi and MQTT client initialization
+// WiFi and MQTT client initialization for secure connection
 WiFiClientSecure esp_client;
 PubSubClient mqtt_client(esp_client);
+// Be sure to uncomment the statement in setup() to set the CA certificate
+//  "esp_client.setCACert(ca_cert);"
 
 // For non-tls connections, you can use the regular WiFiClient
 // WiFiClient espClient;
@@ -79,7 +81,31 @@ CAUw7C29C79Fv1C5qfPrmAESrciIxpg0X40KPMbp1ZWVbd4=
 -----END CERTIFICATE-----
 )EOF";
 
-
+// Load broker pem, which is used by chickencoop_ubuntu server
+// const char* ca_cert = R"EOF(-----BEGIN CERTIFICATE-----
+// MIIDyTCCArGgAwIBAgIUEXdfFQfBi3mTrtRIR0q+7GfWOtkwDQYJKoZIhvcNAQEL
+// BQAwdTELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNBMRYwFAYDVQQHDA1TYW4gRnJh
+// bmNpc2NvMRQwEgYDVQQKDAtNUVRUIEJyb2tlcjEXMBUGA1UECwwOSW9UIERlcGFy
+// dG1lbnQxEjAQBgNVBAMMCWxvY2FsaG9zdDAeFw0yNTA5MjYwMDQxMzdaFw0yNjA5
+// MjYwMDQxMzdaMHUxCzAJBgNVBAYTAlVTMQswCQYDVQQIDAJDQTEWMBQGA1UEBwwN
+// U2FuIEZyYW5jaXNjbzEUMBIGA1UECgwLTVFUVCBCcm9rZXIxFzAVBgNVBAsMDklv
+// VCBEZXBhcnRtZW50MRIwEAYDVQQDDAlsb2NhbGhvc3QwggEiMA0GCSqGSIb3DQEB
+// AQUAA4IBDwAwggEKAoIBAQDc2+obZqmiBbCPUSZqE4p4ZvEOxd4F4T1QlAprldE3
+// kRIg9f4GMLA9RKdxU9tGeXW/gOsYEYcctrB0xl/uQsHE8/hfP00ZmSA991OeroPx
+// O9ae0l94WWWHdNQ9n8Qgb+6m3N08lXj1LF6l54tovM7tW6rVa+K/maLjTxwxmx5O
+// aCez0lejMNVGc//EbbdaXiSNMGLsGNOj8q49+R7r+qznurQTgsV9Oajh2SaC+gMN
+// V2qF+ndyBLO4T02fdzePtm7s1k3OQEi/rCeXRnj5Glanjy3hywLLZy6f46/mXalQ
+// cL1PIILl9hHHvPF3pwFl6qn1NuZ7/HQMhKXejSbij8KlAgMBAAGjUTBPMCUGA1Ud
+// EQQeMByCCWxvY2FsaG9zdIIJbG9jYWxob3N0hwR/AAABMA4GA1UdDwEB/wQEAwIF
+// oDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDATANBgkqhkiG9w0BAQsFAAOCAQEAwjK/
+// 9vkFn2wyp8jmcXnhdMuTATvYVSL/IvBGvO+mQ5wMDv23EsIMutsZZ2mOR56w/gMD
+// 2lrMTmBY5eVA9gKZ6pg90u1vWgQXG3QUtvlxp9Xz7opxxht7YrC47M0dNZlliTDj
+// BvEFcl/jYOD2YXG/WxeD+RKYpcl/bLkcjMwlFK0+fRYJ4OfxIG+urD4OXCjXxp7R
+// 6xxI7O1UwHu0E+wAenU6EF/geie+m0/Hu6fmw7pjI1Lt0HZx4YdzGzop86HZ0G9m
+// RYXMKeMrxzFSyl0goyVjpLvxd/oLdtaJQpS8R6RNOfdXND7PfzPIAv3bwuVyb7NW
+// bO2vh48otvIqRZK3tA==
+// -----END CERTIFICATE-----
+// )EOF";
 
 
 void setup() {
