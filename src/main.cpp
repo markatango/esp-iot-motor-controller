@@ -6,8 +6,9 @@
 #include "secrets.h"  // Include your secrets header for WiFi and MQTT credentials
 #include "io.h"  // Include your IO header for LED control
 #include "main.h"   // Include your main header for function declarations
- 
 
+#include "../certs/data-dancer.com.pem.h"
+ 
 // // WiFi credentials
 const char *ssid = SSID;             // Replace with your WiFi name
 const char *password = PASSWORD;   // Replace with your WiFi password
@@ -29,86 +30,6 @@ PubSubClient mqtt_client(esp_client);
 // PubSubClient mqtt_client(espClient);
 
 
-// Root CA Certificate
-// Load DigiCert Global Root G2, which is used by EMQX Public Broker: broker.emqx.io
-// const char *ca_cert = R"EOF(
-// -----BEGIN CERTIFICATE-----
-// MIIDjjCCAnagAwIBAgIQAzrx5qcRqaC7KGSxHQn65TANBgkqhkiG9w0BAQsFADBh
-// MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3
-// d3cuZGlnaWNlcnQuY29tMSAwHgYDVQQDExdEaWdpQ2VydCBHbG9iYWwgUm9vdCBH
-// MjAeFw0xMzA4MDExMjAwMDBaFw0zODAxMTUxMjAwMDBaMGExCzAJBgNVBAYTAlVT
-// MRUwEwYDVQQKEwxEaWdpQ2VydCBJbmMxGTAXBgNVBAsTEHd3dy5kaWdpY2VydC5j
-// b20xIDAeBgNVBAMTF0RpZ2lDZXJ0IEdsb2JhbCBSb290IEcyMIIBIjANBgkqhkiG
-// 9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuzfNNNx7a8myaJCtSnX/RrohCgiN9RlUyfuI
-// 2/Ou8jqJkTx65qsGGmvPrC3oXgkkRLpimn7Wo6h+4FR1IAWsULecYxpsMNzaHxmx
-// 1x7e/dfgy5SDN67sH0NO3Xss0r0upS/kqbitOtSZpLYl6ZtrAGCSYP9PIUkY92eQ
-// q2EGnI/yuum06ZIya7XzV+hdG82MHauVBJVJ8zUtluNJbd134/tJS7SsVQepj5Wz
-// tCO7TG1F8PapspUwtP1MVYwnSlcUfIKdzXOS0xZKBgyMUNGPHgm+F6HmIcr9g+UQ
-// vIOlCsRnKPZzFBQ9RnbDhxSJITRNrw9FDKZJobq7nMWxM4MphQIDAQABo0IwQDAP
-// BgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBhjAdBgNVHQ4EFgQUTiJUIBiV
-// 5uNu5g/6+rkS7QYXjzkwDQYJKoZIhvcNAQELBQADggEBAGBnKJRvDkhj6zHd6mcY
-// 1Yl9PMWLSn/pvtsrF9+wX3N3KjITOYFnQoQj8kVnNeyIv/iPsGEMNKSuIEyExtv4
-// NeF22d+mQrvHRAiGfzZ0JFrabA0UWTW98kndth/Jsw1HKj2ZL7tcu7XUIOGZX1NG
-// Fdtom/DzMNU+MeKNhJ7jitralj41E6Vf8PlwUHBHQRFXGU7Aj64GxJUTFy8bJZ91
-// 8rGOmaFvE7FBcf6IKshPECBV1/MUReXgRPTqh5Uykw7+U0b6LJ3/iyK5S9kJRaTe
-// pLiaWN0bfVKfjllDiIGknibVb63dDcY3fe0Dkhvld1927jyNxF1WW6LZZm6zNTfl
-// MrY=
-// -----END CERTIFICATE-----
-// )EOF";
-
-// Load DigiCert Global Root CA ca_cert, which is used by EMQX Cloud Serverless Deployment
-
-// const char* ca_cert = R"EOF(-----BEGIN CERTIFICATE-----
-// MIIDrzCCApegAwIBAgIQCDvgVpBCRrGhdWrJWZHHSjANBgkqhkiG9w0BAQUFADBh
-// MQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3
-// d3cuZGlnaWNlcnQuY29tMSAwHgYDVQQDExdEaWdpQ2VydCBHbG9iYWwgUm9vdCBD
-// QTAeFw0wNjExMTAwMDAwMDBaFw0zMTExMTAwMDAwMDBaMGExCzAJBgNVBAYTAlVT
-// MRUwEwYDVQQKEwxEaWdpQ2VydCBJbmMxGTAXBgNVBAsTEHd3dy5kaWdpY2VydC5j
-// b20xIDAeBgNVBAMTF0RpZ2lDZXJ0IEdsb2JhbCBSb290IENBMIIBIjANBgkqhkiG
-// 9w0BAQEFAAOCAQ8AMIIBCgKCAQEA4jvhEXLeqKTTo1eqUKKPC3eQyaKl7hLOllsB
-// CSDMAZOnTjC3U/dDxGkAV53ijSLdhwZAAIEJzs4bg7/fzTtxRuLWZscFs3YnFo97
-// nh6Vfe63SKMI2tavegw5BmV/Sl0fvBf4q77uKNd0f3p4mVmFaG5cIzJLv07A6Fpt
-// 43C/dxC//AH2hdmoRBBYMql1GNXRor5H4idq9Joz+EkIYIvUX7Q6hL+hqkpMfT7P
-// T19sdl6gSzeRntwi5m3OFBqOasv+zbMUZBfHWymeMr/y7vrTC0LUq7dBMtoM1O/4
-// gdW7jVg/tRvoSSiicNoxBN33shbyTApOB6jtSj1etX+jkMOvJwIDAQABo2MwYTAO
-// BgNVHQ8BAf8EBAMCAYYwDwYDVR0TAQH/BAUwAwEB/zAdBgNVHQ4EFgQUA95QNVbR
-// TLtm8KPiGxvDl7I90VUwHwYDVR0jBBgwFoAUA95QNVbRTLtm8KPiGxvDl7I90VUw
-// DQYJKoZIhvcNAQEFBQADggEBAMucN6pIExIK+t1EnE9SsPTfrgT1eXkIoyQY/Esr
-// hMAtudXH/vTBH1jLuG2cenTnmCmrEbXjcKChzUyImZOMkXDiqw8cvpOp/2PV5Adg
-// 06O/nVsJ8dWO41P0jmP6P6fbtGbfYmbW0W5BjfIttep3Sp+dWOIrWcBAI+0tKIJF
-// PnlUkiaY4IBIqDfv8NZ5YBberOgOzW6sRBc4L0na4UU+Krk2U886UAb3LujEV0ls
-// YSEY1QSteDwsOoBrp+uvFRTp2InBuThs4pFsiv9kuXclVzDAGySj4dzp30d8tbQk
-// CAUw7C29C79Fv1C5qfPrmAESrciIxpg0X40KPMbp1ZWVbd4=
-// -----END CERTIFICATE-----
-// )EOF";
-
-// Load broker pem, which is used by chickencoop_ubuntu server
-const char* ca_cert = R"EOF(-----BEGIN CERTIFICATE-----
-MIID2DCCAsCgAwIBAgIUXfzn5h2tz3iEnng6BYmGxDsVq5swDQYJKoZIhvcNAQEL
-BQAweDELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkNBMRYwFAYDVQQHDA1TYW4gRnJh
-bmNpc2NvMRQwEgYDVQQKDAtNUVRUIEJyb2tlcjEXMBUGA1UECwwOSW9UIERlcGFy
-dG1lbnQxFTATBgNVBAMMDDE5Mi4xNjguMS40MTAeFw0yNTA5MjYyMzE1NThaFw0y
-NjA5MjYyMzE1NThaMHgxCzAJBgNVBAYTAlVTMQswCQYDVQQIDAJDQTEWMBQGA1UE
-BwwNU2FuIEZyYW5jaXNjbzEUMBIGA1UECgwLTVFUVCBCcm9rZXIxFzAVBgNVBAsM
-DklvVCBEZXBhcnRtZW50MRUwEwYDVQQDDAwxOTIuMTY4LjEuNDEwggEiMA0GCSqG
-SIb3DQEBAQUAA4IBDwAwggEKAoIBAQCjmwQOWEMiQd1uNIgjSITQK11VCWPsi/Vn
-j8MO29pZVFBIgZzTNOoA0f7dHI2RduyiKSCE3Jn5aWm1E2j+63hdjojrVJXiWAR8
-mxhTdYxxZam5F4omBoiBv0CLDCbKqtTk8Ezis6zZxGLMz7gziAlqFr0A6ysWbnmW
-a+uABmbfEQOCo4iNWO+icjdDl8bJSZ2GApM4FY3EDYtqkm0gHGJMrEGSP3TcjNJw
-b+KwzfxR/LlFYmt5uB552TihpmXOFWrchcEB04tk0N0ysySQp79muwi6s8zrhvfE
-MgoL3EohdYR4C+t+61LC4qzkSRrj4Vvrskks8jGWm0i/H9SnvRGhAgMBAAGjWjBY
-MC4GA1UdEQQnMCWCDDE5Mi4xNjguMS40MYIJbG9jYWxob3N0hwR/AAABhwTAqAEp
-MA4GA1UdDwEB/wQEAwIFoDAWBgNVHSUBAf8EDDAKBggrBgEFBQcDATANBgkqhkiG
-9w0BAQsFAAOCAQEAVCCBJBR0uGQN5uM1hKdaw+ehHG4zzeN5cKWalx5nET++jIEY
-tpSK9Bv9cKEXWLZry4HiX/dcxd5RVxAWuMa/cgx20T3Tp/ibpuX3aA0sbwhq5NUU
-0M/uCI8nFy0Wgi+7+Rgy1l7kC2UO6CBTJMC2OkdqRonA/Qc0etqRYbmktgE9X2ug
-sQR2Ei+qQa4XjNMJnG7OIPOEBHLyNRw2exxn3MHxNuWkw2NCe8yKapH8Kkti779S
-3yanBrXQb67lOv6D1Mi2CIcHsU0FV8gEXXiEr40hAYcTd/H+7tRTupkVq3bXD57t
-iQOsBYdCWzbZqVs93SsYpRvjtEz2PRV+YbxmAw==
------END CERTIFICATE-----
-)EOF";
-
-
 void setup() {
     Serial.begin(115200);
     connectToWiFi();
@@ -116,7 +37,6 @@ void setup() {
     // Set Root CA certificate
     esp_client.setCACert(ca_cert);
     // esp_client.setInsecure();
-    
 
     mqtt_client.setServer(mqtt_broker, mqtt_port);
     mqtt_client.setKeepAlive(60);
@@ -157,7 +77,6 @@ void connectToMQTT() {
     }
 }
 
-
 void mqttCallback(char *topic, unsigned char * payload, unsigned int length) {
     Serial.print("Message received on topic: ");
     Serial.println(topic);
@@ -189,7 +108,6 @@ void processResponse(const char *topic, const char *payload) {
     }
     delay(1000);  // Delay to allow for processing
 }
-
 
 void loop() {
     if (!mqtt_client.connected()) {
