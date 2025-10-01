@@ -41,16 +41,6 @@ const char *mqtt_username = MQTT_USERNAME;
 const char *mqtt_password = MQTT_PASSWORD;
 const int mqtt_port = MQTT_PORT;
 
-// // WiFi and MQTT client initialization for secure connection
-// WiFiClientSecure esp_client;
-// PubSubClient mqtt_client(esp_client);
-
-
-// For non-tls connections, you can use the regular WiFiClient
-// WiFiClient espClient;
-// PubSubClient mqtt_client(espClient);
-
-
 void setup() {
     Serial.begin(115200);
     delay(1000);
@@ -186,26 +176,7 @@ void mqttCallback(char *topic, unsigned char * payload, unsigned int length) {
     
     Serial.printf("\n📨 [%s]: %s\n", topic, message);
     
-    // Process commands
-    // if (strcmp(message, "ON") == 0) {
-    //     led(1);
-    //     Serial.println("💡 LED ON");
-    //     mqtt_client.publish(topic, "LED_ON_confirmed");
-    // } 
-    // else if (strcmp(message, "OFF") == 0) {
-    //     led(0);
-    //     Serial.println("💡 LED OFF");
-    //     mqtt_client.publish(topic, "LED_OFF_confirmed");
-    // }
-    // else if (strcmp(message, "STATUS") == 0) {
-    //     String status = "Uptime: " + String(millis()/1000) + "s";
-    //     mqtt_client.publish(topic, status.c_str());
-    // }
-    // else if (strcmp(message, "LISTBROKERS") == 0) {
-    //     listBrokers();  // Print to serial
-    // }
-
-     processResponse(topic, message);
+    processResponse(topic, message);
 }
 
    
