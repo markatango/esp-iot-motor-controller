@@ -5,5 +5,5 @@ void connectToWiFi();
 void connectToMQTT();
 void mqttCallback(char *topic, unsigned char *payload, unsigned int length);
 void processResponse(const char *topic, const char *payload);
-
+void printBrokerInfo();
 #endif 
