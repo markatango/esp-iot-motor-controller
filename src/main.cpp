@@ -190,20 +190,27 @@ void processResponse(const char *topic, const char *payload) {
     Serial.printf("Processing response for topic: %s\n", topic);
     Serial.printf("Payload: %s\n", payload);
     
-    if (strcmp(payload, "ON") == 0) {
-        setLEDTo(UPI_LED, 1);   // Turn on LED
-        mqtt_client.publish(mqtt_topic, "OFF");
-    } else if (strcmp(payload, "OFF") == 0) {
-        setLEDTo(UPI_LED, 0);  // Turn off LED
-        mqtt_client.publish(mqtt_topic, "ON");
-    } else if (strcmp(payload, "HELLO") == 0) {
-        Serial.println("Hello command received.  (broker.emqx.io compatibility thing)");
-        Serial.printf("Sending 'ON' command to continue the cycle, using topic: %s\n", mqtt_topic);
-        mqtt_client.publish(mqtt_topic, "ON"); // Respond with "ON" to continue the cycle
-    } else {
-        Serial.println("Unknown command received.");
-    }
-    delay(1000);  // Delay to allow for processing
+    // if (strcmp(payload, "ON") == 0) {
+    //     setLEDTo(UPI_LED, 1);   // Turn on LED
+    //     mqtt_client.publish(mqtt_topic, "OFF");
+    // } else if (strcmp(payload, "OFF") == 0) {
+    //     setLEDTo(UPI_LED, 0);  // Turn off LED
+    //     mqtt_client.publish(mqtt_topic, "ON");
+    // } else if (strcmp(payload, "HELLO") == 0) {
+    //     Serial.println("Hello command received.  (broker.emqx.io compatibility thing)");
+    //     Serial.printf("Sending 'ON' command to continue the cycle, using topic: %s\n", mqtt_topic);
+    //     mqtt_client.publish(mqtt_topic, "ON"); // Respond with "ON" to continue the cycle
+    // } else {
+    //     Serial.println("Unknown command received.");
+    // }
+
+    
+    
+    if (strcmp(payload, "swChanged") == 0) {
+        mapSwToLed();
+        printSwStates();
+    } 
+    
 }
 
 
@@ -212,5 +219,19 @@ void loop() {
         connectToMQTT();
     }
     mqtt_client.loop();
+    readSwitches();
+    if(hasSwChanged()){
+        Serial.println("Switch state changed!");
+        // String swPayload = "";
+        // size_t length = sizeof(newSwState) / sizeof(newSwState[0]);
+        // for(int i=0; i<length; i++){
+        //     swPayload += String(swState[i]);
+        //     if(i < length - 1) swPayload += ",";
+        // }
+        // Serial.printf("Publishing switch states: %s\n", swPayload.c_str());
+        // mqtt_client.publish(mqtt_topic, swPayload.c_str());
+        mqtt_client.publish(mqtt_topic, "swChanged");
+    }
+    delay(100);  // Small delay to avoid overwhelming the loop
 }
 // This code is designed to run on an ESP32 and connect to a WiFi network and an MQTT broker.

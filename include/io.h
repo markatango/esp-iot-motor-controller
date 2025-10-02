@@ -18,11 +18,16 @@
 #define UPI_SW 22
 #define DNI_SW 23
 
-void readSwitches(int* newSwState);
+extern int swState[6]; 
+extern int newSwState[6]; 
+extern int oldSwState[6]; 
+
+void readSwitches();
 void setLEDsTo(int state);
 void setupIO();
-bool hasSwChanged(int* oldSwState, int* newSwState);
+bool hasSwChanged();
 void mapSwToLed();
 void setLEDTo(int ledPin, int state);  
+void printSwStates();
 
 #endif

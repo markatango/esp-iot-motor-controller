@@ -29,12 +29,12 @@ void setupIO(){
     pinMode(MOT_UP ,OUTPUT);
     pinMode(MOT_DN ,OUTPUT);
 
-    pinMode(UPLIM_SW ,INPUT);
-    pinMode(DNLIM_SW ,INPUT);
-    pinMode(UPS_SW ,INPUT);
-    pinMode(DNS_SW ,INPUT);
-    pinMode(UPI_SW ,INPUT);
-    pinMode(DNI_SW ,INPUT);
+    pinMode(UPLIM_SW ,INPUT_PULLUP);
+    pinMode(DNLIM_SW ,INPUT_PULLUP);
+    pinMode(UPS_SW ,INPUT_PULLUP);
+    pinMode(DNS_SW ,INPUT_PULLUP);
+    pinMode(UPI_SW ,INPUT_PULLUP);
+    pinMode(DNI_SW ,INPUT_PULLUP);
 };
 
 void setLEDsTo(int state){
@@ -57,17 +57,18 @@ void mapSwToLed(){
     };
 };
 
-void readSwitches(int* newSwState){
+void readSwitches(){
     int idx = 0;
     // Read all switches
     for(std::map<int,int>::iterator it = swLedmap.begin(); it != swLedmap.end(); ++it) {
-        int swState = digitalRead(it->second);
+        int swState = digitalRead(it->first);
         newSwState[idx] = swState;
+
         idx++;  
     };
 };
 
-bool hasSwChanged(int* oldSwState, int* newSwState){
+bool hasSwChanged(){
     bool res = false;
     for(int i=0; i<6; i++){
         if(oldSwState[i] != newSwState[i]){
@@ -76,6 +77,16 @@ bool hasSwChanged(int* oldSwState, int* newSwState){
         }
     }
     return res;
-}       
+};       
+
+void printSwStates(){
+    size_t length = sizeof(newSwState) / sizeof(newSwState[0]);
+    Serial.print("Switch states: ");
+    for(int i=0; i<length; i++){
+        Serial.print(newSwState[i]);
+        Serial.print(" ");
+    }
+    Serial.println();
+};
 
 
