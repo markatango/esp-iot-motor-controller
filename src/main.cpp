@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <WiFiClient.h>          // For plain MQTT
@@ -7,18 +8,17 @@
 #include "io.h"  // Include your IO header for LED control
 #include "main.h"   // Include your main header for function declarations
 
-// #include "../certs/data-dancer.com.pem.h"
-
-
 // ====================================================================
 // BROKER SELECTION - Just change this line to switch brokers!
 // ====================================================================
 #define SELECTED_BROKER "data-dancer.com"  
+// ====================================================================
+
 #define USE_SSL true  // true for SSL, false for plain MQTT
  
-// // WiFi credentials
-const char *ssid = SSID;             // Replace with your WiFi name
-const char *password = PASSWORD;   // Replace with your WiFi password
+// WiFi credentials
+const char *ssid = SSID;           
+const char *password = PASSWORD;   
 
 // Current broker (will be loaded from dictionary)
 const BrokerConfig* currentBroker = nullptr;
@@ -44,6 +44,8 @@ const int mqtt_port = MQTT_PORT;
 void setup() {
     Serial.begin(115200);
     delay(1000);
+    setupIO();
+    setLEDsTo(false);
   
     Serial.println("\n🚀 ESP32 MQTT Client with Broker Dictionary");
     Serial.println("=============================================");
@@ -61,10 +63,6 @@ void setup() {
     printBrokerInfo();
 
     connectToWiFi();
-
-    // Set Root CA certificate
-    // esp_client.setCACert(currentBroker->server_cert);
-    // esp_client.setInsecure();
 
     #if USE_SSL
         sslClient.setCACert(currentBroker->server_cert);
@@ -149,17 +147,16 @@ void connectToMQTT() {
         if (connected) {
             Serial.println("✅ Connected!");
             
-            // Subscribe and publish
             String topic = mqtt_topic;
             mqtt_client.subscribe(topic.c_str());
             Serial.printf("📡 Subscribed: %s\n", topic.c_str());
             
             String msg = "ESP32 connected to " + String(currentBroker->name) + 
                         (USE_SSL ? " (SSL)" : " (Plain)");
-            // mqtt_client.publish(topic.c_str(), msg.c_str());
-            // Serial.println("📤 Message sent");
-            
+            mqtt_client.publish(topic.c_str(), msg.c_str());
+
             break;
+            
         } else {
             Serial.printf("❌ Failed, rc=%d\n", mqtt_client.state());
             if (attempts < maxAttempts) {
@@ -175,37 +172,28 @@ void mqttCallback(char *topic, unsigned char * payload, unsigned int length) {
     message[length] = '\0';
     
     Serial.printf("\n📨 [%s]: %s\n", topic, message);
-    
     processResponse(topic, message);
 }
 
-   
 
 void processResponse(const char *topic, const char *payload) {
     Serial.printf("Processing response for topic: %s\n", topic);
     Serial.printf("Payload: %s\n", payload);
-    
-    if (strcmp(payload, "ON") == 0) {
-        led(1);  // Turn on LED
-        mqtt_client.publish(mqtt_topic, "OFF");
-    } else if (strcmp(payload, "OFF") == 0) {
-        led(0);  // Turn off LED
-        mqtt_client.publish(mqtt_topic, "ON");
-    } else if (strcmp(payload, "HELLO") == 0) {
-        Serial.println("Hello command received.  (broker.emqx.io compatibility thing)");
-        Serial.printf("Sending 'ON' command to continue the cycle, using topic: %s\n", mqtt_topic);
-        mqtt_client.publish(mqtt_topic, "ON"); // Respond with "ON" to continue the cycle
-    } else {
-        Serial.println("Unknown command received.");
-    }
-    delay(1000);  // Delay to allow for processing
+    if (strcmp(payload, "swChanged") == 0) {
+        mapSwToLed();
+        printSwStates();
+    } 
 }
-
 
 void loop() {
     if (!mqtt_client.connected()) {
         connectToMQTT();
     }
     mqtt_client.loop();
+    readSwitches();
+    if(hasSwChanged()){
+        Serial.println("Switch state changed!");
+        mqtt_client.publish(mqtt_topic, "swChanged");
+    }
+    delay(100);  // Small delay to avoid overwhelming the loop
 }
-// This code is designed to run on an ESP32 and connect to a WiFi network and an MQTT broker.
