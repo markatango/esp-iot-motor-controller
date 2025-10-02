@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 #include <WiFiClient.h>          // For plain MQTT
@@ -44,6 +45,8 @@ const int mqtt_port = MQTT_PORT;
 void setup() {
     Serial.begin(115200);
     delay(1000);
+    setupIO();
+    setLEDsTo(false);
   
     Serial.println("\n🚀 ESP32 MQTT Client with Broker Dictionary");
     Serial.println("=============================================");
@@ -179,17 +182,19 @@ void mqttCallback(char *topic, unsigned char * payload, unsigned int length) {
     processResponse(topic, message);
 }
 
-   
+void scanControlls() {
+    
+}
 
 void processResponse(const char *topic, const char *payload) {
     Serial.printf("Processing response for topic: %s\n", topic);
     Serial.printf("Payload: %s\n", payload);
     
     if (strcmp(payload, "ON") == 0) {
-        led(1);  // Turn on LED
+        setLEDTo(UPI_LED, 1);   // Turn on LED
         mqtt_client.publish(mqtt_topic, "OFF");
     } else if (strcmp(payload, "OFF") == 0) {
-        led(0);  // Turn off LED
+        setLEDTo(UPI_LED, 0);  // Turn off LED
         mqtt_client.publish(mqtt_topic, "ON");
     } else if (strcmp(payload, "HELLO") == 0) {
         Serial.println("Hello command received.  (broker.emqx.io compatibility thing)");
