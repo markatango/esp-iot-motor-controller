@@ -56,7 +56,8 @@ void setup() {
     WiFi.begin();
     delay(1000);
     setupIO();
-    setLEDsTo(true);
+    // setLEDsTo(true);
+    mapSwToLed();
   
     Serial.println("\n🚀 ESP32 MQTT Client with Separated Certificate Management");
     Serial.println("============================================================");
@@ -159,6 +160,7 @@ void setup() {
 
     mqtt_client.setServer(currentBroker->url, port);
     mqtt_client.setKeepAlive(60);
+    mqtt_client.setBufferSize(512);  // Default is 256
     mqtt_client.setCallback(mqttCallback);
 
     connectToMQTT();
