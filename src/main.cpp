@@ -40,10 +40,23 @@ WiFiClientSecure sslClient;          // For SSL MQTT (port 8883)
 const char *mqtt_topic = MQTT_TOPIC;
 
 void setup() {
+    // Use static IP (optional)
+    // Set values in main.h
+
+    // Uncomment the following lines to enable static IP configuration
+    
+    // Serial.println("Configuring static IP...");
+    // if (!WiFi.config(local_IP, gateway, subnet, primaryDNS, secondaryDNS)) {
+    //     Serial.println("Static IP configuration failed!");
+    // }
+
+    
+ 
     Serial.begin(115200);
+    WiFi.begin();
     delay(1000);
     setupIO();
-    setLEDsTo(false);
+    setLEDsTo(true);
   
     Serial.println("\n🚀 ESP32 MQTT Client with Separated Certificate Management");
     Serial.println("============================================================");
@@ -171,6 +184,7 @@ void printBrokerInfo() {
 
 void connectToWiFi() {
     Serial.println("📶 Connecting to WiFi...");
+    WiFi.enableIpV6();
     WiFi.begin(ssid, password);
     
     int attempts = 0;
