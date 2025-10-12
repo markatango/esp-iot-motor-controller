@@ -57,7 +57,8 @@ void setup() {
     delay(1000);
     setupIO();
     // setLEDsTo(true);
-    mapSwToLed();
+    mapSwToLed(); // Initial setting output
+    printSwStates();
   
     Serial.println("\n🚀 ESP32 MQTT Client with Separated Certificate Management");
     Serial.println("============================================================");
