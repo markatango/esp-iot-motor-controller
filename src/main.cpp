@@ -44,6 +44,22 @@ const int daylight_offset_sec = 0;
 const int INPUT_PINS[NUM_DIGITAL_INPUTS] = {UPLIM_SW, DNLIM_SW, UPS_SW, DNS_SW, UPI_SW, DNI_SW};
 const int OUTPUT_PINS[NUM_DIGITAL_OUTPUTS] = {A, B, C, D};
 
+const char* INPUT_NAMES[NUM_DIGITAL_INPUTS] = {
+    "UPLIM",  // Upper limit switch
+    "DNLIM",  // Down limit switch
+    "UPS",    // Upper position sensor
+    "DNS",    // Down position sensor
+    "UPI",    // Upper input
+    "DNI"     // Down input
+};
+
+const char* OUTPUT_NAMES[NUM_DIGITAL_OUTPUTS] = {
+    "A",
+    "B",
+    "C",
+    "D"
+};
+
 // Voltage monitoring pins (ADC1 channels to avoid WiFi conflicts)
 const int BATTERY_VOLTAGE_PIN = ADC1_CH6;  // ADC1_CH6 (VP)
 const int SOLAR_VOLTAGE_PIN = ADC1_CH7;    // ADC1_CH7 (VN)
@@ -590,24 +606,34 @@ void publish_io_state() {
   StaticJsonDocument<512> doc;
   
   if (xSemaphoreTake(io_state_mutex, portMAX_DELAY) == pdTRUE) {
-    JsonArray inputs = doc.createNestedArray("inputs");
+    // JsonArray inputs = doc.createNestedArray("inputs");
+    // for (int i = 0; i < NUM_DIGITAL_INPUTS; i++) {
+    //   inputs.add(input_states[i]);
+    // }
+    
+    // JsonArray outputs = doc.createNestedArray("outputs");
+    // for (int i = 0; i < NUM_DIGITAL_OUTPUTS; i++) {
+    //   outputs.add(output_states[i]);
+    // }
+    
+    // JsonArray input_pins = doc.createNestedArray("input_pins");
+    // for (int i = 0; i < NUM_DIGITAL_INPUTS; i++) {
+    //   input_pins.add(INPUT_PINS[i]);
+    // }
+    
+    // JsonArray output_pins = doc.createNestedArray("output_pins");
+    // for (int i = 0; i < NUM_DIGITAL_OUTPUTS; i++) {
+    //   output_pins.add(OUTPUT_PINS[i]);
+    // }
+
+    // Add inputs directly to root object
     for (int i = 0; i < NUM_DIGITAL_INPUTS; i++) {
-      inputs.add(input_states[i]);
+      doc[INPUT_NAMES[i]] = (bool)input_states[i];
     }
     
-    JsonArray outputs = doc.createNestedArray("outputs");
+    // Add outputs directly to root object
     for (int i = 0; i < NUM_DIGITAL_OUTPUTS; i++) {
-      outputs.add(output_states[i]);
-    }
-    
-    JsonArray input_pins = doc.createNestedArray("input_pins");
-    for (int i = 0; i < NUM_DIGITAL_INPUTS; i++) {
-      input_pins.add(INPUT_PINS[i]);
-    }
-    
-    JsonArray output_pins = doc.createNestedArray("output_pins");
-    for (int i = 0; i < NUM_DIGITAL_OUTPUTS; i++) {
-      output_pins.add(OUTPUT_PINS[i]);
+      doc[OUTPUT_NAMES[i]] = (bool)output_states[i];
     }
     
     xSemaphoreGive(io_state_mutex);
