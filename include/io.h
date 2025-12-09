@@ -8,8 +8,10 @@
 #define UPLIM_LED 19
 #define DNLIM_LED 21
 
-#define MOT_UP 25
-#define MOT_DN 33
+#define A 18
+#define B 19
+#define C 25
+#define D 33
 
 #define UPLIM_SW 13
 #define DNLIM_SW 12
@@ -17,6 +19,12 @@
 #define DNS_SW 27
 #define UPI_SW 22
 #define DNI_SW 23
+
+#define ADC1_CH6 34
+#define ADC1_CH7 35
+
+#define NUM_DIGITAL_INPUTS 6
+#define NUM_DIGITAL_OUTPUTS 4
 
 extern int swState[6]; 
 extern int newSwState[6]; 

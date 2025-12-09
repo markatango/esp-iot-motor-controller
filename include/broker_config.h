@@ -1,22 +1,17 @@
+/**
+ * @file broker_config.h
+ * @brief MQTT Broker Configuration with SSL/TLS Certificates
+ * 
+ * Contains broker definitions with their server certificates and connection details.
+ * Supports multiple brokers with easy switching.
+ */
+
 #ifndef BROKER_CONFIG_H
 #define BROKER_CONFIG_H
 
-#include <Arduino.h>     // For Serial
-#include <string.h>      // For strcmp
-
-// Arduino-friendly broker configuration
-// No STL required - works with ESP32/Arduino
-
-// Structure to hold broker configuration
-struct BrokerConfig {
-    const char* name;
-    const char* url;
-    const char* server_cert;
-    const char* username;
-    const char* password;
-    int port_plain;
-    int port_ssl;
-};
+// ====================================================================
+// BROKER CERTIFICATES
+// ====================================================================
 
 // Certificate for data-dancer.com (your local broker)
 const char* dataDancerCert = R"EOF(-----BEGIN CERTIFICATE-----
@@ -66,7 +61,7 @@ hMAtudXH/vTBH1jLuG2cenTnmCmrEbXjcKChzUyImZOMkXDiqw8cvpOp/2PV5Adg
 PnlUkiaY4IBIqDfv8NZ5YBberOgOzW6sRBc4L0na4UU+Krk2U886UAb3LujEV0ls
 YSEY1QSteDwsOoBrp+uvFRTp2InBuThs4pFsiv9kuXclVzDAGySj4dzp30d8tbQk
 CAUw7C29C79Fv1C5qfPrmAESrciIxpg0X40KPMbp1ZWVbd4=
------END CERTIFICATE-----
+-----END CERTIFICATE-----q
 )EOF";
 
 
@@ -96,11 +91,35 @@ iQOsBYdCWzbZqVs93SsYpRvjtEz2PRV+YbxmAw==
 )EOF";
 
 
-// Array of broker configurations (dictionary)
+// ====================================================================
+// BROKER CONFIGURATION STRUCTURE
+// ====================================================================
+
+/**
+ * Structure to hold broker configuration
+ */
+struct BrokerConfig {
+    const char* name;           // Friendly name for display
+    const char* url;            // Broker hostname or IP
+    const char* server_cert;    // Server's SSL certificate
+    const char* username;       // MQTT username (empty = no auth)
+    const char* password;       // MQTT password
+    int port_plain;            // Plain MQTT port (usually 1883)
+    int port_ssl;              // SSL MQTT port (usually 8883)
+};
+
+// ====================================================================
+// BROKER CONFIGURATIONS ARRAY
+// ====================================================================
+
+/**
+ * Array of broker configurations
+ * Add or modify brokers here as needed
+ */
 const BrokerConfig BROKER_CONFIGS[] = {
     {
         "data-dancer.com",     // name
-        "data-dancer.com",        // url (IP address)
+        "data-dancer.com",     // url
         dataDancerCert,        // certificate
         "",                    // username (empty = no auth)
         "",                    // password
@@ -117,23 +136,29 @@ const BrokerConfig BROKER_CONFIGS[] = {
         8883                   // SSL MQTT port
     },
     {
-        "192.168.1.41",      // name
-        "192.168.1.41",      // url
-        localCert,              // certificate
-        "",                // username
-        "",              // password
+        "192.168.1.41",        // name
+        "192.168.1.41",        // url (local broker)
+        localCert,             // certificate
+        "",                    // username
+        "",                    // password
         1883,                  // plain MQTT port
         8883                   // SSL MQTT port
     }
-    
-
     // Add more brokers here as needed
 };
 
 // Number of brokers in the array
 const int NUM_BROKERS = sizeof(BROKER_CONFIGS) / sizeof(BROKER_CONFIGS[0]);
 
-// Function to get broker config by name
+// ====================================================================
+// ACCESS FUNCTIONS
+// ====================================================================
+
+/**
+ * Get broker config by name
+ * @param brokerName Name of the broker to find
+ * @return Pointer to BrokerConfig or nullptr if not found
+ */
 const BrokerConfig* getBrokerConfig(const char* brokerName) {
     for (int i = 0; i < NUM_BROKERS; i++) {
         if (strcmp(BROKER_CONFIGS[i].name, brokerName) == 0) {
@@ -143,24 +168,78 @@ const BrokerConfig* getBrokerConfig(const char* brokerName) {
     return nullptr;  // Not found
 }
 
-// Function to list all available brokers
+/**
+ * Get broker config by index
+ * @param index Index in the BROKER_CONFIGS array
+ * @return Pointer to BrokerConfig or nullptr if index out of range
+ */
+const BrokerConfig* getBrokerByIndex(int index) {
+    if (index >= 0 && index < NUM_BROKERS) {
+        return &BROKER_CONFIGS[index];
+    }
+    return nullptr;
+}
+
+/**
+ * List all available broker configurations
+ */
 void listBrokers() {
-    Serial.println("\n📋 Available Brokers:");
-    Serial.println("=====================");
+    Serial.println("\n📡 Available MQTT Brokers:");
+    Serial.println("====================================");
     
     for (int i = 0; i < NUM_BROKERS; i++) {
         Serial.printf("\n🔹 %s\n", BROKER_CONFIGS[i].name);
         Serial.printf("   URL: %s\n", BROKER_CONFIGS[i].url);
-        Serial.printf("   Ports: %d (plain), %d (ssl)\n", 
+        Serial.printf("   Ports: %d (plain), %d (SSL)\n", 
                      BROKER_CONFIGS[i].port_plain, 
                      BROKER_CONFIGS[i].port_ssl);
         
         if (strlen(BROKER_CONFIGS[i].username) > 0) {
-            Serial.printf("   Username: %s\n", BROKER_CONFIGS[i].username);
+            Serial.printf("   🔐 Auth: Username/Password\n");
         } else {
-            Serial.println("   Auth: None");
+            Serial.printf("   🔓 Auth: None\n");
+        }
+        
+        if (BROKER_CONFIGS[i].server_cert != nullptr) {
+            Serial.println("   ✅ Server Certificate: Present");
+        } else {
+            Serial.println("   ❌ Server Certificate: None");
         }
     }
+    Serial.println();
+}
+
+/**
+ * Print broker configuration details
+ * @param config Pointer to BrokerConfig to print
+ */
+void printBrokerInfo(const BrokerConfig* config) {
+    if (config == nullptr) {
+        Serial.println("❌ Invalid broker configuration");
+        return;
+    }
+    
+    Serial.println("📡 Broker Configuration:");
+    Serial.println("========================");
+    Serial.printf("   Name: %s\n", config->name);
+    Serial.printf("   URL: %s\n", config->url);
+    Serial.printf("   Plain Port: %d\n", config->port_plain);
+    Serial.printf("   SSL Port: %d\n", config->port_ssl);
+    
+    if (strlen(config->username) > 0) {
+        Serial.printf("   Username: %s\n", config->username);
+        Serial.println("   Password: ********");
+    } else {
+        Serial.println("   Authentication: None");
+    }
+    
+    if (config->server_cert != nullptr) {
+        Serial.println("   ✅ Server Certificate: Present");
+    } else {
+        Serial.println("   ⚠️  Server Certificate: Missing (insecure)");
+    }
+    
+    Serial.println();
 }
 
 #endif // BROKER_CONFIG_H

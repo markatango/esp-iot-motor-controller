@@ -26,8 +26,10 @@ void setupIO(){
     pinMode(UPLIM_LED ,OUTPUT);
     pinMode(DNLIM_LED ,OUTPUT);
 
-    pinMode(MOT_UP ,OUTPUT);
-    pinMode(MOT_DN ,OUTPUT);
+    pinMode(A ,OUTPUT);
+    pinMode(B ,OUTPUT);
+    pinMode(C ,OUTPUT);
+    pinMode(D ,OUTPUT);
 
     pinMode(UPLIM_SW ,INPUT_PULLUP);
     pinMode(DNLIM_SW ,INPUT_PULLUP);
