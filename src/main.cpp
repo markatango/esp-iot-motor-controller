@@ -17,9 +17,6 @@
 // CONFIGURATION CONSTANTS - Update these for your setup
 // =============================================================================
 
-// WiFi credentials
-const char* ssid = WIFI_SSID;
-const char* password = WIFI_PASSWORD;
 
 // Broker and Client Selection
 // Choose from broker_config.h and client.h
@@ -79,6 +76,10 @@ const int ADC_SAMPLES = 10;       // Number of samples to average
 // Debounce settings
 const unsigned long DEBOUNCE_DELAY = 50;
 
+// Wifi reconnect variables
+unsigned long last_wifi_check = 0;
+const unsigned long WIFI_CHECK_INTERVAL = 30000;  // Check every 30 seconds
+
 // =============================================================================
 // GLOBAL VARIABLES
 // =============================================================================
@@ -124,19 +125,19 @@ void setup() {
   listBrokers();
   listClients();
   
-  // Get selected broker and client configurations
-  const BrokerConfig* broker = getBrokerConfig(selected_broker);
-  const ClientConfig* client = getClientConfig(selected_client);
+  // Get selected broker and client configurations from secrets.h
+  const BrokerConfig* broker = getBrokerConfig(SELECTED_BROKER);
+  const ClientConfig* client = getClientConfig(SELECTED_CLIENT);
   
   if (broker == nullptr) {
-    Serial.printf("❌ ERROR: Broker '%s' not found!\n", selected_broker);
+    Serial.printf("❌ ERROR: Broker '%s' not found!\n", SELECTED_BROKER);
     Serial.println("Available brokers:");
     listBrokers();
     while(1) delay(1000);
   }
   
   if (client == nullptr) {
-    Serial.printf("❌ ERROR: Client '%s' not found!\n", selected_client);
+    Serial.printf("❌ ERROR: Client '%s' not found!\n", SELECTED_CLIENT);
     Serial.println("Available clients:");
     listClients();
     while(1) delay(1000);
@@ -164,15 +165,13 @@ void setup() {
     while(1) delay(1000);
   }
   
-  
   setup_pins();
-  setup_wifi();
+  setup_wifi();  // Now tries multiple networks
   setup_adc();
   setup_ntp();
-  setup_ssl(broker, client);  // Pass broker and client configs
+  setup_ssl(broker, client);
   
   mqtt_client.setServer(broker->url, broker->port_ssl);
-  mqtt_client.setCallback(callback);
   mqtt_client.setCallback(callback);
   
   // Initial state read
@@ -224,11 +223,30 @@ void setup() {
   Serial.printf("Voltage Monitor Task on Core 0\n");
 }
 
+// Wifi monitoring and reconnection
+void check_wifi_connection() {
+  if (millis() - last_wifi_check < WIFI_CHECK_INTERVAL) {
+    return;  // Not time to check yet
+  }
+  
+  last_wifi_check = millis();
+  
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("\n⚠️  WiFi connection lost! Attempting to reconnect...");
+    digitalWrite(WIFI_LED, LOW);  // Indicate disconnection
+    setup_wifi();  // Try to reconnect to any available network
+  }
+}
+
 // =============================================================================
 // MAIN LOOP
 // =============================================================================
 
 void loop() {
+  
+  // Make sure we're connected to WiFi
+  check_wifi_connection();
+
   // Main loop handles MQTT connection
   if (!mqtt_client.connected()) {
     reconnect_mqtt();
@@ -248,21 +266,87 @@ void loop() {
 
 void setup_wifi() {
   delay(10);
+  Serial.println("\n====================================");
+  Serial.println("WiFi Connection Manager");
+  Serial.println("====================================");
+  
+  // List available networks
+  Serial.printf("\n📶 Configured WiFi Networks (%d):\n", NUM_WIFI_NETWORKS);
+  for (int i = 0; i < NUM_WIFI_NETWORKS; i++) {
+    Serial.printf("   %d. %s", i + 1, WIFI_NETWORKS[i].ssid);
+    if (WIFI_NETWORKS[i].description != nullptr && strlen(WIFI_NETWORKS[i].description) > 0) {
+      Serial.printf(" - %s", WIFI_NETWORKS[i].description);
+    }
+    Serial.println();
+  }
   Serial.println();
-  Serial.print("Connecting to WiFi: ");
-  Serial.println(ssid);
   
   WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid, password);
+  WiFi.disconnect();
+  delay(100);
   
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
+  // Try each network in order
+  for (int i = 0; i < NUM_WIFI_NETWORKS; i++) {
+    const char* ssid = WIFI_NETWORKS[i].ssid;
+    const char* password = WIFI_NETWORKS[i].password;
+    
+    Serial.printf("🔄 Attempting connection %d/%d: %s\n", i + 1, NUM_WIFI_NETWORKS, ssid);
+    
+    WiFi.begin(ssid, password);
+    digitalWrite(WIFI_LED, LOW);  // Indicate attempting connection
+    
+    // Try to connect for 10 seconds
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+      delay(500);
+      Serial.print(".");
+      attempts++;
+    }
+    
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("\n✅ WiFi connected!");
+      Serial.printf("   SSID: %s\n", ssid);
+      Serial.printf("   IP Address: %s\n", WiFi.localIP().toString().c_str());
+      Serial.printf("   Signal Strength: %d dBm\n", WiFi.RSSI());
+      Serial.printf("   MAC Address: %s\n", WiFi.macAddress().c_str());
+      Serial.println("====================================\n");
+      digitalWrite(WIFI_LED, HIGH);  // Indicate successful connection
+      return;  // Success! Exit function
+    } else {
+      Serial.println(" ❌ Failed");
+      
+      // Print reason for failure
+      switch (WiFi.status()) {
+        case WL_NO_SSID_AVAIL:
+          Serial.println("   Reason: Network not found");
+          break;
+        case WL_CONNECT_FAILED:
+          Serial.println("   Reason: Connection failed (wrong password?)");
+          break;
+        case WL_CONNECTION_LOST:
+          Serial.println("   Reason: Connection lost");
+          break;
+        case WL_DISCONNECTED:
+          Serial.println("   Reason: Disconnected");
+          break;
+        default:
+          Serial.printf("   Reason: Unknown (status %d)\n", WiFi.status());
+          break;
+      }
+    }
   }
-  digitalWrite(WIFI_LED, HIGH); // Turn on WiFi LED when connected
-  Serial.println("\nWiFi connected");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
+  
+  // If we get here, all networks failed
+  Serial.println("\n❌ ERROR: Could not connect to any WiFi network!");
+  Serial.println("   Please check:");
+  Serial.println("   1. WiFi credentials in secrets.h");
+  Serial.println("   2. WiFi network is in range");
+  Serial.println("   3. WiFi network is operational");
+  Serial.println("\n⏸️  System halted. Reboot to retry.");
+  
+  while (1) {
+    delay(1000);  // Halt system
+  }
 }
 
 void setup_pins() {
@@ -355,7 +439,7 @@ void setup_ssl(const BrokerConfig* broker, const ClientConfig* client) {
 
 void reconnect_mqtt() {
   // Get broker configuration
-  const BrokerConfig* broker = getBrokerConfig(selected_broker);
+  const BrokerConfig* broker = getBrokerConfig(SELECTED_BROKER);
   
   if (broker == nullptr) {
     Serial.println("❌ ERROR: Broker configuration not found!");

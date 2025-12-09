@@ -5,3 +5,20 @@ secrets.h
 commands.txt
 documentation/
 **/client.h
+# Secrets - never commit!
+secrets.h
+
+# PlatformIO
+.pio/
+.vscode/
+
+# Certificates
+*.key
+*.crt
+*.pem
+certs/
+
+# Build artifacts
+*.bin
+*.elf
+*.map
