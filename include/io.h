@@ -12,6 +12,7 @@
 #define B 19
 #define C 25
 #define D 33
+#define WIFI_LED 2
 
 #define UPLIM_SW 13
 #define DNLIM_SW 12
@@ -24,7 +25,7 @@
 #define ADC1_CH7 35
 
 #define NUM_DIGITAL_INPUTS 6
-#define NUM_DIGITAL_OUTPUTS 4
+#define NUM_DIGITAL_OUTPUTS 5
 
 extern int swState[6]; 
 extern int newSwState[6]; 

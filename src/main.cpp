@@ -42,7 +42,7 @@ const int daylight_offset_sec = 0;
 
 // Digital I/O pin definitions
 const int INPUT_PINS[NUM_DIGITAL_INPUTS] = {UPLIM_SW, DNLIM_SW, UPS_SW, DNS_SW, UPI_SW, DNI_SW};
-const int OUTPUT_PINS[NUM_DIGITAL_OUTPUTS] = {A, B, C, D};
+const int OUTPUT_PINS[NUM_DIGITAL_OUTPUTS] = {A, B, C, D, WIFI_LED};
 
 const char* INPUT_NAMES[NUM_DIGITAL_INPUTS] = {
     "UPLIM",  // Upper limit switch
@@ -57,7 +57,8 @@ const char* OUTPUT_NAMES[NUM_DIGITAL_OUTPUTS] = {
     "A",
     "B",
     "C",
-    "D"
+    "D",
+    "WIFI_LED"
 };
 
 // Voltage monitoring pins (ADC1 channels to avoid WiFi conflicts)
@@ -163,8 +164,9 @@ void setup() {
     while(1) delay(1000);
   }
   
-  setup_wifi();
+  
   setup_pins();
+  setup_wifi();
   setup_adc();
   setup_ntp();
   setup_ssl(broker, client);  // Pass broker and client configs
@@ -257,7 +259,7 @@ void setup_wifi() {
     delay(500);
     Serial.print(".");
   }
-  
+  digitalWrite(WIFI_LED, HIGH); // Turn on WiFi LED when connected
   Serial.println("\nWiFi connected");
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
@@ -509,8 +511,8 @@ void voltage_monitor_task(void* parameter) {
   Serial.println("Voltage Monitor Task started on core " + String(xPortGetCoreID()));
   
   TickType_t last_wake_time = xTaskGetTickCount();
-  const TickType_t frequency = pdMS_TO_TICKS(60000); // 60 seconds
-//   const TickType_t frequency = pdMS_TO_TICKS(500); // half second
+//   const TickType_t frequency = pdMS_TO_TICKS(60000); // 60 seconds
+  const TickType_t frequency = pdMS_TO_TICKS(500); // half second
   
   while (1) {
     vTaskDelayUntil(&last_wake_time, frequency);
