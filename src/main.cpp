@@ -113,6 +113,29 @@ SemaphoreHandle_t voltage_mutex = NULL;
 WiFiClientSecure espClient;
 PubSubClient mqtt_client(espClient);
 
+// wifi event handler
+void WiFiEvent(WiFiEvent_t event) {
+  switch(event) {
+    case ARDUINO_EVENT_WIFI_STA_START:
+      Serial.println("   WiFi station started");
+      break;
+    case ARDUINO_EVENT_WIFI_STA_CONNECTED:
+      Serial.println("   WiFi connected to AP");
+      break;
+    case ARDUINO_EVENT_WIFI_STA_GOT_IP:
+      Serial.printf("   Got IP: %s\n", WiFi.localIP().toString().c_str());
+      break;
+    case ARDUINO_EVENT_WIFI_STA_LOST_IP:
+      Serial.println("   Lost IP address");
+      break;
+    case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
+      Serial.println("   WiFi disconnected");
+      break;
+    default:
+      break;
+  }
+}
+
 // =============================================================================
 // SETUP FUNCTION
 // =============================================================================
@@ -120,6 +143,9 @@ PubSubClient mqtt_client(espClient);
 void setup() {
   Serial.begin(115200);
   Serial.println("\n\nESP32 Multi-threaded ChickenCoop Monitor Starting...");
+
+  // Register WiFi event handler
+  WiFi.onEvent(WiFiEvent);
   
   // List available configurations
   listBrokers();

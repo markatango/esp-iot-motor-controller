@@ -14,10 +14,10 @@
 #define D 33
 #define WIFI_LED 2
 
-#define UPLIM_SW 13
-#define DNLIM_SW 12
-#define UPS_SW 14
-#define DNS_SW 27
+#define UPLIM_SW 14
+#define DNLIM_SW 27
+#define UPS_SW 13
+#define DNS_SW 12
 #define UPI_SW 22
 #define DNI_SW 23
 
