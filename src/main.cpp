@@ -621,8 +621,8 @@ void voltage_monitor_task(void* parameter) {
   Serial.println("Voltage Monitor Task started on core " + String(xPortGetCoreID()));
   
   TickType_t last_wake_time = xTaskGetTickCount();
-//   const TickType_t frequency = pdMS_TO_TICKS(60000); // 60 seconds
-  const TickType_t frequency = pdMS_TO_TICKS(500); // half second
+  const TickType_t frequency = pdMS_TO_TICKS(60000); // 60 seconds
+  // const TickType_t frequency = pdMS_TO_TICKS(500); // half second
   
   while (1) {
     vTaskDelayUntil(&last_wake_time, frequency);
@@ -692,6 +692,14 @@ void read_voltages() {
   
   Serial.printf("Battery: %.2fV (ADC: %.3fV), Solar: %.2fV (ADC: %.3fV)\n", 
                 battery_voltage, battery_adc_voltage, solar_voltage, solar_adc_voltage);
+}
+void _analyze_input_changes() {
+  for (int i = 0; i < NUM_DIGITAL_INPUTS; i++) {
+    if (input_states[i] != last_input_states[i]) {
+      Serial.printf("Input %d changed from %d to %d\n", i, last_input_states[i], input_states[i]);
+      last_input_states[i] = input_states[i];
+    }
+  }
 }
 
 bool has_state_changed() {
