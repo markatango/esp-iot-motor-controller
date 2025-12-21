@@ -4,7 +4,7 @@
 secrets.h
 commands.txt
 documentation/
-**/client.h
+**/client.*
 # Secrets - never commit!
 secrets.h
 
