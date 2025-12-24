@@ -173,23 +173,25 @@ int io_set_output_by_name(const char* name, const uint8_t value) {
 void io_monitor_task(void* parameter) {
   Serial.println("🔌 I/O Monitor Task started on core " + String(xPortGetCoreID()));
   
+  TickType_t last_wake_time = xTaskGetTickCount();
+  const TickType_t frequency = pdMS_TO_TICKS(10);  // 10ms fixed interval
+  
   while (1) {
-    if (xSemaphoreTake(io_state_mutex, portMAX_DELAY) == pdTRUE) {
-      io_read_inputs();
-      
-      // Check for state changes
-      if (io_has_state_changed()) {
-        Serial.print("🔌 I/O State changed: ");
-        io_publish_needed = true;
-        for (int i = 0; i < NUM_DIGITAL_INPUTS; i++) {
-          Serial.printf("%s=%d ", INPUT_NAMES[i], input_states[i]);
-        }
-        Serial.println();
+      if (xSemaphoreTake(io_state_mutex, portMAX_DELAY) == pdTRUE) {
+          io_read_inputs();
+          
+          if (io_has_state_changed()) {
+              Serial.print("🔌 I/O State changed: ");
+              io_publish_needed = true;
+              for (int i = 0; i < NUM_DIGITAL_INPUTS; i++) {
+                  Serial.printf("%s=%d ", INPUT_NAMES[i], input_states[i]);
+              }
+              Serial.println();
+          }
+          
+          xSemaphoreGive(io_state_mutex);
       }
       
-      xSemaphoreGive(io_state_mutex);
-    }
-    
-    delay(10);  // Poll every 10ms
+      vTaskDelayUntil(&last_wake_time, frequency);  // ✅ Precise timing
   }
 }
