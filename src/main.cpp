@@ -15,6 +15,7 @@
 #include "voltage_monitor.h"
 #include "time_sync.h"
 #include "io_monitor.h"
+#include "state_machine.h"
 #include "mqtt_manager.h"
 #include "broker_config.h"
 #include "client.h"
@@ -154,6 +155,7 @@ void setup() {
   voltage_init();
   time_sync_init();
   mqtt_init();
+  sm_init();
   
   // Connect to MQTT broker
   if (!mqtt_connect(SELECTED_BROKER, SELECTED_CLIENT, MQTT_CLIENT_ID)) {
@@ -196,6 +198,18 @@ void setup() {
     0  // Core 0
   );
   Serial.println("✅ Voltage Monitor Task created (Core 0)");
+
+
+  xTaskCreatePinnedToCore(
+    state_machine_task,
+    "StateMachine",
+    4096,
+    NULL,
+    2,
+    NULL,
+    1  // Core 1
+  );
+  Serial.println("✅ State Machine Task created (Core 1)");
   
   Serial.println("\n✅ Setup complete! System running...\n");
   Serial.println("════════════════════════════════════════════════\n");
