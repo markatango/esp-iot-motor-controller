@@ -17,7 +17,7 @@
 // MQTT Topics
 const char* TOPIC_TIME = "chickencoop/time";
 const char* TOPIC_IO_STATE = "chickencoop/io/state";
-const char* TOPIC_IO_CONTROL = "chickencoop/io/control";
+const char* TOPIC_IO_CONTROL = "chickencoop/io/command";
 const char* TOPIC_VOLTAGE = "chickencoop/voltages";
 const char* TOPIC_STATUS_REQUEST = "chickencoop/status/request";
 
