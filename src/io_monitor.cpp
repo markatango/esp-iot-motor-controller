@@ -50,6 +50,7 @@ uint8_t prev_input_states[NUM_DIGITAL_INPUTS] = {0};
 unsigned long last_debounce_times[NUM_DIGITAL_INPUTS] = {0};
 SemaphoreHandle_t io_state_mutex = NULL;
 volatile bool io_publish_needed = false;
+
 // ====================================================================
 // FUNCTIONS
 // ====================================================================

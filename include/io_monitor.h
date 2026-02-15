@@ -38,6 +38,7 @@ extern SemaphoreHandle_t io_state_mutex;
 // Debounce configuration
 extern const unsigned long DEBOUNCE_DELAY;
 extern unsigned long last_debounce_times[];
+extern volatile bool io_publish_needed;
 
 // ====================================================================
 // I/O FUNCTIONS

@@ -229,6 +229,7 @@ void mqtt_loop() {
 
 void mqtt_publish_io_state() {
   StaticJsonDocument<512> doc;
+  Serial.println("\n📤 Publishing I/O state...");
   
   // Do this inside a mutex to avoid race conditions
   if (xSemaphoreTake(io_state_mutex, portMAX_DELAY) == pdTRUE) {
