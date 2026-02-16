@@ -366,30 +366,30 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     }
     
     if (xSemaphoreTake(io_state_mutex, portMAX_DELAY) == pdTRUE) {
-      bool state_changed = false;
+      // bool state_changed = false;
       
       // Handle array of outputs: {"outputs": [0, 1, 0, 1]}
-      if (doc.containsKey("outputs")) {
-        JsonArray outputs = doc["outputs"];
+      // if (doc.containsKey("outputs")) {
+      //   JsonArray outputs = doc["outputs"];
         
-        for (int i = 0; i < NUM_DIGITAL_OUTPUTS && i < outputs.size(); i++) {
-          if (!outputs[i].isNull()) {
-            uint8_t value = outputs[i].as<uint8_t>();
-            io_set_output(i, value);
-            state_changed = true;
-          }
-        }
-      }
+      //   for (int i = 0; i < NUM_DIGITAL_OUTPUTS && i < outputs.size(); i++) {
+      //     if (!outputs[i].isNull()) {
+      //       uint8_t value = outputs[i].as<uint8_t>();
+      //       io_set_output(i, value);
+      //       state_changed = true;
+      //     }
+      //   }
+      // }
       
-      // Handle single output: {"output": 0, "value": 1}
-      if (doc.containsKey("output")) {
-        int output_num = doc["output"];
-        uint8_t value = doc["value"];
+      // // Handle single output: {"output": 0, "value": 1}
+      // if (doc.containsKey("output")) {
+      //   int output_num = doc["output"];
+      //   uint8_t value = doc["value"];
         
-        if (io_set_output(output_num, value)) {
-          state_changed = true;
-        }
-      }
+      //   if (io_set_output(output_num, value)) {
+      //     state_changed = true;
+      //   }
+      // }
 
       if (doc.containsKey("command")) {
         const char *  command = doc["command"];
@@ -397,21 +397,21 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
         Serial.println(command);
       }
       
-      // Handle named output: {"MOTOR_UP": 1}
-      for (int i = 0; i < NUM_DIGITAL_OUTPUTS; i++) {
-        if (doc.containsKey(OUTPUT_NAMES[i])) {
-          uint8_t value = doc[OUTPUT_NAMES[i]].as<uint8_t>();
-          io_set_output(i, value);
-          state_changed = true;
-        }
-      }
+      // // Handle named output: {"MOTOR_UP": 1}
+      // for (int i = 0; i < NUM_DIGITAL_OUTPUTS; i++) {
+      //   if (doc.containsKey(OUTPUT_NAMES[i])) {
+      //     uint8_t value = doc[OUTPUT_NAMES[i]].as<uint8_t>();
+      //     io_set_output(i, value);
+      //     state_changed = true;
+      //   }
+      // }
       
       xSemaphoreGive(io_state_mutex);
       
       // Publish updated state
-      if (state_changed) {
-        mqtt_publish_io_state();
-      }
+      // if (state_changed) {
+      //   mqtt_publish_io_state();
+      // }
     }
   }
 }
