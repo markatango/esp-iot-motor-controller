@@ -390,6 +390,12 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
           state_changed = true;
         }
       }
+
+      if (doc.containsKey("command")) {
+        const char *  command = doc["command"];
+        Serial.print("Received command: ");
+        Serial.println(command);
+      }
       
       // Handle named output: {"MOTOR_UP": 1}
       for (int i = 0; i < NUM_DIGITAL_OUTPUTS; i++) {
