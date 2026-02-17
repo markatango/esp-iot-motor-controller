@@ -20,6 +20,7 @@ const char* TOPIC_IO_STATE = "chickencoop/io/state";
 const char* TOPIC_IO_CONTROL = "chickencoop/io/command";
 const char* TOPIC_VOLTAGE = "chickencoop/voltages";
 const char* TOPIC_STATUS_REQUEST = "chickencoop/status/request";
+const char* TOPIC_SCHEDULE = "chickencoop/schedule";
 
 // ====================================================================
 // GLOBAL VARIABLES
@@ -124,10 +125,12 @@ bool mqtt_connect(const char* broker_name, const char* client_name, const char* 
       // Subscribe to topics
       mqtt_client.subscribe(TOPIC_IO_CONTROL);
       mqtt_client.subscribe(TOPIC_STATUS_REQUEST);
+      mqtt_client.subscribe(TOPIC_SCHEDULE);
       
       Serial.println("📥 Subscribed to:");
       Serial.printf("   - %s\n", TOPIC_IO_CONTROL);
       Serial.printf("   - %s\n", TOPIC_STATUS_REQUEST);
+      Serial.printf("   - %s\n", TOPIC_SCHEDULE);
       
       xSemaphoreGive(mqtt_mutex);
       
@@ -186,6 +189,8 @@ void mqtt_reconnect(const char* broker_name, const char* client_name, const char
         Serial.printf("Subscribed to %s with result %d\n", TOPIC_IO_CONTROL, sub_result);
         sub_result = mqtt_client.subscribe(TOPIC_STATUS_REQUEST, 1);
         Serial.printf("Subscribed to %s with result %d\n", TOPIC_STATUS_REQUEST, sub_result);
+        sub_result = mqtt_client.subscribe(TOPIC_SCHEDULE, 1);
+        Serial.printf("Subscribed to %s with result %d\n", TOPIC_SCHEDULE, sub_result);
         
         xSemaphoreGive(mqtt_mutex);
         
