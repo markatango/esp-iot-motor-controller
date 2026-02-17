@@ -13,6 +13,7 @@
 #include <time.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
+#include <freertos/semphr.h>
 
 // ====================================================================
 // TIME CONFIGURATION
@@ -22,6 +23,7 @@
 extern const char* ntp_server;
 extern const long gmt_offset_sec;
 extern const int daylight_offset_sec;
+extern SemaphoreHandle_t time_and_schedule_mutex;
 
 // Current time
 extern time_t current_time;

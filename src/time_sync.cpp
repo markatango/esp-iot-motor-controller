@@ -18,6 +18,7 @@ const int daylight_offset_sec = 3600;    // 1 hour for DST
 // ====================================================================
 
 time_t current_time = 0;
+SemaphoreHandle_t time_and_schedule_mutex = NULL;
 
 // ====================================================================
 // FUNCTIONS
@@ -29,6 +30,13 @@ void time_sync_init() {
   Serial.printf("   GMT Offset: %ld seconds (%.1f hours)\n", gmt_offset_sec, gmt_offset_sec / 3600.0);
   
   configTime(gmt_offset_sec, daylight_offset_sec, ntp_server);
+
+  // Create mutex
+  time_and_schedule_mutex = xSemaphoreCreateMutex();
+  if (time_and_schedule_mutex == NULL) {
+    Serial.println("❌ Failed to create time and schedule mutex!");
+    while(1) delay(1000);
+  }
   
   // Wait for time to be set
   Serial.print("   Waiting for NTP sync");
@@ -72,15 +80,18 @@ void time_sync_task(void* parameter) {
   
   while (1) {
     // Update current time
-    time(&current_time);
-    
-    struct tm timeinfo;
-    if (getLocalTime(&timeinfo)) {
-      char time_str[64];
-      strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", &timeinfo);
-      Serial.printf("🕐 Time: %s (Unix: %ld)\n", time_str, current_time);
-    } else {
-      Serial.println("⚠️  Failed to get local time");
+    if (xSemaphoreTake(time_and_schedule_mutex, portMAX_DELAY) == pdTRUE) {
+      time(&current_time);
+      
+      struct tm timeinfo;
+      if (getLocalTime(&timeinfo)) {
+        char time_str[64];
+        strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        Serial.printf("🕐 Time: %s (Unix: %ld)\n", time_str, current_time);
+      } else {
+        Serial.println("⚠️  Failed to get local time");
+      }
+      xSemaphoreGive(time_and_schedule_mutex);
     }
     
     vTaskDelayUntil(&last_wake_time, frequency);

@@ -362,6 +362,60 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     Serial.println("✅ Status published in response to request");
     return;
   }
+
+  // Handle schedule times
+  if (strcmp(topic, TOPIC_SCHEDULE) == 0) {
+    StaticJsonDocument<256> doc;
+    DeserializationError error = deserializeJson(doc, message);
+    
+    if (error) {
+      Serial.print("❌ JSON parsing failed: ");
+      Serial.println(error.c_str());
+      return;
+    }
+    
+    if (xSemaphoreTake(time_and_schedule_mutex, portMAX_DELAY) == pdTRUE) {
+      // bool state_changed = false;
+      
+      // Handle array of outputs: {"outputs": [0, 1, 0, 1]}
+      // if (doc.containsKey("outputs")) {
+      //   JsonArray outputs = doc["outputs"];
+        
+      //   for (int i = 0; i < NUM_DIGITAL_OUTPUTS && i < outputs.size(); i++) {
+      //     if (!outputs[i].isNull()) {
+      //       uint8_t value = outputs[i].as<uint8_t>();
+      //       io_set_output(i, value);
+      //       state_changed = true;
+      //     }
+      //   }
+      // }
+      
+      // // Handle single output: {"output": 0, "value": 1}
+      // if (doc.containsKey("output")) {
+      //   int output_num = doc["output"];
+      //   uint8_t value = doc["value"];
+        
+      //   if (io_set_output(output_num, value)) {
+      //     state_changed = true;
+      //   }
+      // }
+      const char * open_time_str = nullptr;
+       if (doc.containsKey("open_time")) {
+        open_time_str = doc["open_time"];
+        Serial.print("Received open_time: ");
+        Serial.println(open_time_str);
+      }
+
+      if (doc.containsKey("close_time")) {
+        const char * close_time_str = nullptr;
+        close_time_str = doc["close_time"];
+        Serial.print("Received close_time: ");
+        Serial.println(close_time_str);
+      }
+      
+      xSemaphoreGive(time_and_schedule_mutex);
+    }
+  }
   
   // Handle I/O control
   if (strcmp(topic, TOPIC_IO_CONTROL) == 0) {
