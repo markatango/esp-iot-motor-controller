@@ -156,6 +156,8 @@ bool mqtt_connect(const char* broker_name, const char* client_name, const char* 
 
 void mqtt_reconnect(const char* broker_name, const char* client_name, const char* client_id) {
   const BrokerConfig* broker = getBrokerConfig(broker_name);
+  int sub_result;
+
   
   if (broker == nullptr) {
     Serial.println("❌ ERROR: Broker configuration not found!");
@@ -180,8 +182,10 @@ void mqtt_reconnect(const char* broker_name, const char* client_name, const char
         Serial.println("connected ✅");
         
         // Subscribe to topics
-        mqtt_client.subscribe(TOPIC_IO_CONTROL);
-        mqtt_client.subscribe(TOPIC_STATUS_REQUEST);
+        sub_result = mqtt_client.subscribe(TOPIC_IO_CONTROL, 1);
+        Serial.printf("Subscribed to %s with result %d\n", TOPIC_IO_CONTROL, sub_result);
+        sub_result = mqtt_client.subscribe(TOPIC_STATUS_REQUEST, 1);
+        Serial.printf("Subscribed to %s with result %d\n", TOPIC_STATUS_REQUEST, sub_result);
         
         xSemaphoreGive(mqtt_mutex);
         
