@@ -32,6 +32,7 @@ extern WiFiClientSecure esp_client;
 extern PubSubClient mqtt_client;
 extern SemaphoreHandle_t mqtt_mutex;
 extern volatile bool io_publish_needed;
+extern volatile bool status_request_pending;
 
 // ====================================================================
 // MQTT FUNCTIONS

@@ -184,6 +184,7 @@ void io_monitor_task(void* parameter) {
           if (io_has_state_changed()) {
               Serial.print("🔌 I/O State changed: ");
               io_publish_needed = true;
+              Serial.printf("Set true on cpu core %d\n", (int)xPortGetCoreID());
               for (int i = 0; i < NUM_DIGITAL_INPUTS; i++) {
                   Serial.printf("%s=%d ", INPUT_NAMES[i], input_states[i]);
               }

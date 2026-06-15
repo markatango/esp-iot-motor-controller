@@ -4,6 +4,7 @@
  */
 
 #include "time_sync.h"
+#include "cron_scheduler.h"
 
 // ====================================================================
 // CONFIGURATION
@@ -56,6 +57,7 @@ void time_sync_init() {
       char time_str[64];
       strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", &timeinfo);
       Serial.printf("✅ Time synchronized: %s\n", time_str);
+      ntp_setSynced(true);
     }
   }
 }

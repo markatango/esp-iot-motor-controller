@@ -7,7 +7,7 @@
 #include "voltage_monitor.h"
 #include "time_sync.h"
 #include "io_monitor.h"
-
+#include "cron_scheduler.h"
 
 
 // ====================================================================
@@ -29,6 +29,7 @@ const char* TOPIC_SCHEDULE = "chickencoop/schedule";
 WiFiClientSecure esp_client;
 PubSubClient mqtt_client(esp_client);
 SemaphoreHandle_t mqtt_mutex = NULL;
+volatile bool status_request_pending = false;
 
 
 // ====================================================================
@@ -349,15 +350,16 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     Serial.println("📥 Status request received");
     
     // Read current I/O state
-    if (xSemaphoreTake(io_state_mutex, portMAX_DELAY) == pdTRUE) {
+    if (xSemaphoreTake(io_state_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
       io_read_inputs();
       xSemaphoreGive(io_state_mutex);
     }
-    
-    // Publish all states
-    mqtt_publish_io_state();
-    mqtt_publish_voltage();
-    mqtt_publish_time();
+    status_request_pending = true;
+
+    // // Publish all states
+    // mqtt_publish_io_state();
+    // mqtt_publish_voltage();
+    // mqtt_publish_time();
     
     Serial.println("✅ Status published in response to request");
     return;
@@ -375,30 +377,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     }
     
     if (xSemaphoreTake(time_and_schedule_mutex, portMAX_DELAY) == pdTRUE) {
-      // bool state_changed = false;
       
-      // Handle array of outputs: {"outputs": [0, 1, 0, 1]}
-      // if (doc.containsKey("outputs")) {
-      //   JsonArray outputs = doc["outputs"];
-        
-      //   for (int i = 0; i < NUM_DIGITAL_OUTPUTS && i < outputs.size(); i++) {
-      //     if (!outputs[i].isNull()) {
-      //       uint8_t value = outputs[i].as<uint8_t>();
-      //       io_set_output(i, value);
-      //       state_changed = true;
-      //     }
-      //   }
-      // }
-      
-      // // Handle single output: {"output": 0, "value": 1}
-      // if (doc.containsKey("output")) {
-      //   int output_num = doc["output"];
-      //   uint8_t value = doc["value"];
-        
-      //   if (io_set_output(output_num, value)) {
-      //     state_changed = true;
-      //   }
-      // }
       const char * open_time_str = nullptr;
        if (doc.containsKey("open_time")) {
         open_time_str = doc["open_time"];

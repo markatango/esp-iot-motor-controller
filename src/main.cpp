@@ -20,6 +20,7 @@
 #include "broker_config.h"
 #include "client.h"
 #include "secrets.h"
+#include "cron_scheduler.h"
 // #include "io.h"
 
 // ====================================================================
@@ -154,6 +155,7 @@ void setup() {
   // Initialize modules
   voltage_init();
   time_sync_init();
+  cronScheduler_init();
   mqtt_init();
   sm_init();
   
@@ -228,6 +230,8 @@ void loop() {
     Serial.println("⚠️  MQTT disconnected, reconnecting...");
     mqtt_reconnect(SELECTED_BROKER, SELECTED_CLIENT, MQTT_CLIENT_ID);
   }
+
+
   
   // Process MQTT messages
   mqtt_loop();
@@ -238,9 +242,9 @@ void loop() {
   
   if (millis() - last_io_check > IO_CHECK_INTERVAL) {
     last_io_check = millis();
-    
+    // Serial.printf("io_publish_needed is %s on cpu core %d\n", io_publish_needed ? "true" : "false", (int)xPortGetCoreID());
     if (io_publish_needed) {
-
+        Serial.printf("Checking on cpu core %d\n", (int)xPortGetCoreID());
         io_publish_needed = false;
         mqtt_publish_io_state();
         Serial.println("📤 I/O state changed - published");
@@ -265,6 +269,18 @@ void loop() {
     last_time_publish = millis();
     mqtt_publish_time();
     Serial.println("📤 Time published (periodic)");
+  }
+
+  if(status_request_pending) {
+    status_request_pending = false;
+    if(xSemaphoreTake(io_state_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+      io_read_inputs();
+      xSemaphoreGive(io_state_mutex);
+    }
+    mqtt_publish_io_state();
+    mqtt_publish_voltage();
+    mqtt_publish_time();
+    Serial.println("📤 Status request - published current state");
   }
   
   delay(10);
