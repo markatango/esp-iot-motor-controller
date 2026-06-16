@@ -128,4 +128,11 @@ void state_machine_task(void* parameter);
  */
 void sm_get_status(StateMachineState* state, bool* output_active, unsigned long* time_remaining_ms);
 
+/**
+ * @brief Trigger a simulated UPI LOW→HIGH transition from an external source (e.g. MQTT).
+ * No-op if the state machine is already in STATE_B.
+ * Thread-safe.
+ */
+void sm_trigger_open();
+
 #endif // STATE_MACHINE_H

@@ -255,6 +255,21 @@ void sm_get_status(StateMachineState* state, bool* output_active, unsigned long*
   }
 }
 
+void sm_trigger_open() {
+  StateMachineState state;
+  if (xSemaphoreTake(sm_mutex, portMAX_DELAY) != pdTRUE) return;
+  state = current_state;
+  xSemaphoreGive(sm_mutex);
+
+  if (state == STATE_A) {
+    Serial.println("🔄 MQTT 'open': simulating UPI LOW→HIGH transition");
+    sm_enter_state_b();
+  } else {
+    Serial.println("⚠️ MQTT 'open' ignored: already in STATE_B");
+  }
+}
+
+
 void state_machine_task(void* parameter) {
   Serial.println("🔄 State Machine Task started on core " + String(xPortGetCoreID()));
   
