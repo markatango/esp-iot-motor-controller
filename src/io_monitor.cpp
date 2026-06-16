@@ -11,13 +11,13 @@
 
 // Pin counts
 const int NUM_DIGITAL_INPUTS = 6;
-const int NUM_DIGITAL_OUTPUTS = 5;
+const int NUM_DIGITAL_OUTPUTS = 7;
 
 // Input pin definitions
 const int INPUT_PINS[NUM_DIGITAL_INPUTS] = {14,27,13,12,22,23};
 
 // Output pin definitions
-const int OUTPUT_PINS[NUM_DIGITAL_OUTPUTS] = {18,19,25,33,2};
+const int OUTPUT_PINS[NUM_DIGITAL_OUTPUTS] = {4,5,18,19,25,33,2};
 
 // Pin names
 const char* INPUT_NAMES[NUM_DIGITAL_INPUTS] = {
@@ -34,6 +34,8 @@ const char* OUTPUT_NAMES[NUM_DIGITAL_OUTPUTS] = {
     "B",
     "C",
     "D",
+    "Mup",
+    "Mdn",
     "WIFI_LED"
 };
 

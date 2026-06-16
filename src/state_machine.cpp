@@ -13,7 +13,7 @@
 // Change these to match your hardware setup
 const char* SM_INPUT_A_NAME = "UPI";    // Input monitored in State A
 const char* SM_INPUT_B_NAME = "UPLIM";    // Input monitored in State B
-const char* SM_OUTPUT_NAME = "C";       // Output pin controlled by state machine
+const char* SM_OUTPUT_NAME = "Mup";       // Output pin controlled by state machine
 
 // Timing configuration
 unsigned long SM_TIMEOUT_MS = 5000;  // 5 second timeout in State B
