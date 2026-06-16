@@ -367,33 +367,34 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
 
   // Handle schedule times
   if (strcmp(topic, TOPIC_SCHEDULE) == 0) {
-    StaticJsonDocument<256> doc;
-    DeserializationError error = deserializeJson(doc, message);
+    // StaticJsonDocument<256> doc;
+    // DeserializationError error = deserializeJson(doc, message);
+    applyScheduleFromMQTT(message, length);  // ← this line is missing
+    return;
+    // if (error) {
+    //   Serial.print("❌ JSON parsing failed: ");
+    //   Serial.println(error.c_str());
+    //   return;
+    // }
     
-    if (error) {
-      Serial.print("❌ JSON parsing failed: ");
-      Serial.println(error.c_str());
-      return;
-    }
-    
-    if (xSemaphoreTake(time_and_schedule_mutex, portMAX_DELAY) == pdTRUE) {
+    // if (xSemaphoreTake(time_and_schedule_mutex, portMAX_DELAY) == pdTRUE) {
       
-      const char * open_time_str = nullptr;
-       if (doc.containsKey("open_time")) {
-        open_time_str = doc["open_time"];
-        Serial.print("Received open_time: ");
-        Serial.println(open_time_str);
-      }
+    //   const char * open_time_str = nullptr;
+    //    if (doc.containsKey("open_time")) {
+    //     open_time_str = doc["open_time"];
+    //     Serial.print("Received open_time: ");
+    //     Serial.println(open_time_str);
+    //   }
 
-      if (doc.containsKey("close_time")) {
-        const char * close_time_str = nullptr;
-        close_time_str = doc["close_time"];
-        Serial.print("Received close_time: ");
-        Serial.println(close_time_str);
-      }
+    //   if (doc.containsKey("close_time")) {
+    //     const char * close_time_str = nullptr;
+    //     close_time_str = doc["close_time"];
+    //     Serial.print("Received close_time: ");
+    //     Serial.println(close_time_str);
+    //   }
       
-      xSemaphoreGive(time_and_schedule_mutex);
-    }
+    //   xSemaphoreGive(time_and_schedule_mutex);
+    // }
   }
   
   // Handle I/O control
