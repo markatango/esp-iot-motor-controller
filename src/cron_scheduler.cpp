@@ -3,6 +3,7 @@
 // ============================================================================
 
 #include "cron_scheduler.h"
+#include "state_machine.h"
 
 #include <Arduino.h>
 #include <ArduinoJson.h>
@@ -283,6 +284,10 @@ static void cronCallback(TimerHandle_t xTimer) {
         } else {
             Serial.printf("[CRON][%s] ERROR: could not acquire mutex — action skipped.\n",
                           job->label);
+        }
+
+        if (strcmp(job->label, "OPEN") == 0) {
+            sm_trigger_open();
         }
     }
 

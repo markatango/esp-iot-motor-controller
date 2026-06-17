@@ -87,6 +87,9 @@ void time_sync_task(void* parameter) {
       
       struct tm timeinfo;
       if (getLocalTime(&timeinfo)) {
+        if (!ntp_isSynced() && current_time > 1577836800L) {
+          ntp_setSynced(true);
+        }
         char time_str[64];
         strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", &timeinfo);
         Serial.printf("🕐 Time: %s (Unix: %ld)\n", time_str, current_time);
