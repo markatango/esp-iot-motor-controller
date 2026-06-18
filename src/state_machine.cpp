@@ -16,6 +16,7 @@
  */
 
 #include "state_machine.h"
+#include "mqtt_manager.h"
 
 // ============================================================================
 // CONFIGURATION
@@ -29,6 +30,7 @@ static const char* IN_UPS   = "UPS";
 static const char* IN_DNS   = "DNS";
 static const char* OUT_MUP  = "Mup";
 static const char* OUT_MDN  = "Mdn";
+static const char* OUT_ERR  = "Error";  // active-low error LED (GPIO4)
 
 // ============================================================================
 // GLOBAL STATE
@@ -115,6 +117,14 @@ static void stop_motors() {
     Serial.println("⏹ Motors stopped");
 }
 
+static void set_error_led(bool on) {
+    // Active-low: drive LOW to illuminate, HIGH to extinguish
+    if (xSemaphoreTake(io_state_mutex, portMAX_DELAY) == pdTRUE) {
+        io_set_output_by_name(OUT_ERR, on ? LOW : HIGH);
+        xSemaphoreGive(io_state_mutex);
+    }
+}
+
 static bool motor_timed_out() {
     return (millis() - motor_start_ms) >= MOTOR_TIMEOUT_MS;
 }
@@ -140,12 +150,14 @@ static bool check_safety(const SMInputs& in) {
     if (in.motor_up && in.motor_down) {
         Serial.println("⚠️ MOT ERROR: both motors active simultaneously!");
         stop_motors();
+        set_error_led(true);
         do_transition(SM_STATE_MOT_ERROR);
         return true;
     }
     if (in.uplim && in.dnlim) {
         Serial.println("⚠️ LIM ERROR: both limit switches active!");
         stop_motors();
+        set_error_led(true);
         do_transition(SM_STATE_LIM_ERROR);
         return true;
     }
@@ -178,13 +190,16 @@ static void process_start(const SMInputs& in) {
 static void process_opening(const SMInputs& in) {
     // Upper limit hit while motoring up → door is OPEN
     if (in.uplim && in.motor_up) {
+        float duration_s = (millis() - motor_start_ms) / 1000.0f;
         stop_motors();
         do_transition(SM_STATE_OPEN);
+        mqtt_publish_door_operation(duration_s, "open");
         return;
     }
     if (motor_timed_out()) {
         Serial.printf("⚠️ OPENING timeout (%lus)!\n", MOTOR_TIMEOUT_MS / 1000);
         stop_motors();
+        set_error_led(true);
         do_transition(SM_STATE_MOT_ERROR);
     }
 }
@@ -204,13 +219,16 @@ static void process_closing(const SMInputs& in) {
     // Lower limit hit while motoring down → door is CLOSED
     // Note: row 15 in the table has motor columns transposed; corrected here: mdn=1
     if (in.dnlim && in.motor_down) {
+        float duration_s = (millis() - motor_start_ms) / 1000.0f;
         stop_motors();
         do_transition(SM_STATE_CLOSED);
+        mqtt_publish_door_operation(duration_s, "close");
         return;
     }
     if (motor_timed_out()) {
         Serial.printf("⚠️ CLOSING timeout (%lus)!\n", MOTOR_TIMEOUT_MS / 1000);
         stop_motors();
+        set_error_led(true);
         do_transition(SM_STATE_MOT_ERROR);
     }
 }
@@ -230,6 +248,7 @@ static void process_mot_error(const SMInputs& in) {
     // ups LOW→HIGH edge with either motor confirmed off → reset to START
     if (in.ups_rise && (!in.motor_up || !in.motor_down)) {
         stop_motors();
+        set_error_led(false);
         do_transition(SM_STATE_START);
     }
 }
@@ -238,6 +257,7 @@ static void process_lim_error(const SMInputs& in) {
     // ups LOW→HIGH edge with at least one limit no longer active → reset to START
     if (in.ups_rise && (!in.uplim || !in.dnlim)) {
         stop_motors();
+        set_error_led(false);
         do_transition(SM_STATE_START);
     }
 }
@@ -258,6 +278,7 @@ void sm_init() {
     if (xSemaphoreTake(io_state_mutex, portMAX_DELAY) == pdTRUE) {
         prev_ups = (uint8_t)io_get_input_by_name(IN_UPS);
         prev_dns = (uint8_t)io_get_input_by_name(IN_DNS);
+        io_set_output_by_name(OUT_ERR, HIGH);  // active-low: HIGH = extinguished at boot
         xSemaphoreGive(io_state_mutex);
     }
 

@@ -96,6 +96,13 @@ void mqtt_publish_voltage();
 void mqtt_publish_time();
 
 /**
+ * @brief Publish door open/close operation duration to MQTT
+ * @param duration_s Motor run time in seconds
+ * @param direction  "open" or "close"
+ */
+void mqtt_publish_door_operation(float duration_s, const char* direction);
+
+/**
  * @brief MQTT callback for received messages
  * @param topic Topic string
  * @param payload Message payload

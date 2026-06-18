@@ -30,7 +30,7 @@ const char* INPUT_NAMES[NUM_DIGITAL_INPUTS] = {
 };
 
 const char* OUTPUT_NAMES[NUM_DIGITAL_OUTPUTS] = {
-    "A",
+    "Error",
     "B",
     "C",
     "D",

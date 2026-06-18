@@ -330,6 +330,33 @@ void mqtt_publish_time() {
   }
 }
 
+void mqtt_publish_door_operation(float duration_s, const char* direction) {
+  StaticJsonDocument<256> doc;
+  doc["duration"]  = serialized(String(duration_s, 2));
+  doc["door"]      = "main";
+  doc["direction"] = direction;
+
+  // ISO 8601 UTC timestamp
+  time_t now = time(nullptr);
+  struct tm t;
+  gmtime_r(&now, &t);
+  char ts[32];
+  strftime(ts, sizeof(ts), "%Y-%m-%dT%H:%M:%SZ", &t);
+  doc["timestamp"] = ts;
+
+  char buffer[256];
+  serializeJson(doc, buffer);
+
+  if (xSemaphoreTake(mqtt_mutex, portMAX_DELAY) == pdTRUE) {
+    if (mqtt_client.publish("chickencoop/door/operation_time", buffer, true)) {
+      Serial.printf("📊 Door op published: %s %.2fs\n", direction, duration_s);
+    } else {
+      Serial.println("❌ Failed to publish door operation");
+    }
+    xSemaphoreGive(mqtt_mutex);
+  }
+}
+
 void mqtt_callback(char* topic, byte* payload, unsigned int length) {
   Serial.print("📥 Message arrived [");
   Serial.print(topic);
