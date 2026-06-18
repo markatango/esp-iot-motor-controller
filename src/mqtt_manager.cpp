@@ -48,9 +48,12 @@ void mqtt_init() {
     while(1) delay(1000);
   }
   
+  // Increase packet buffer beyond the 256-byte default to accommodate full I/O state payload
+  mqtt_client.setBufferSize(1024);
+
   // Set callback
   mqtt_client.setCallback(mqtt_callback);
-  
+
   Serial.println("✅ MQTT manager initialized");
 }
 
@@ -161,65 +164,45 @@ bool mqtt_connect(const char* broker_name, const char* client_name, const char* 
 }
 
 void mqtt_reconnect(const char* broker_name, const char* client_name, const char* client_id) {
-  const BrokerConfig* broker = getBrokerConfig(broker_name);
-  int sub_result;
+  // Rate-limit to one attempt every 10 seconds so the main loop is never blocked
+  static unsigned long last_attempt_ms = 0;
+  if (millis() - last_attempt_ms < 10000) return;
+  last_attempt_ms = millis();
 
-  
+  const BrokerConfig* broker = getBrokerConfig(broker_name);
   if (broker == nullptr) {
     Serial.println("❌ ERROR: Broker configuration not found!");
     return;
   }
-  
-  while (!mqtt_client.connected()) {
-    Serial.print("🔄 Attempting MQTT connection to ");
-    Serial.print(broker->name);
-    Serial.print("...");
-    
-    if (xSemaphoreTake(mqtt_mutex, portMAX_DELAY) == pdTRUE) {
-      bool connected = false;
-      
-      if (strlen(broker->username) > 0) {
-        connected = mqtt_client.connect(client_id, broker->username, broker->password);
-      } else {
-        connected = mqtt_client.connect(client_id);
-      }
-      
-      if (connected) {
-        Serial.println("connected ✅");
-        
-        // Subscribe to topics
-        sub_result = mqtt_client.subscribe(TOPIC_IO_CONTROL, 1);
-        Serial.printf("Subscribed to %s with result %d\n", TOPIC_IO_CONTROL, sub_result);
-        sub_result = mqtt_client.subscribe(TOPIC_STATUS_REQUEST, 1);
-        Serial.printf("Subscribed to %s with result %d\n", TOPIC_STATUS_REQUEST, sub_result);
-        sub_result = mqtt_client.subscribe(TOPIC_SCHEDULE, 1);
-        Serial.printf("Subscribed to %s with result %d\n", TOPIC_SCHEDULE, sub_result);
-        
-        xSemaphoreGive(mqtt_mutex);
-        
-        // Read and publish initial state
-        Serial.println("📤 Publishing reconnection states...");
-        
-        if (xSemaphoreTake(io_state_mutex, portMAX_DELAY) == pdTRUE) {
-          io_read_inputs();
-          xSemaphoreGive(io_state_mutex);
-        }
-        
-        mqtt_publish_io_state();
-        mqtt_publish_voltage();
-        mqtt_publish_time();
-        
-        Serial.println("✅ Reconnected and synchronized");
-        
-        return;  // Successfully connected
-      } else {
-        Serial.print("failed ❌, rc=");
-        Serial.print(mqtt_client.state());
-        Serial.println(" retrying in 5 seconds");
-        xSemaphoreGive(mqtt_mutex);
-        delay(5000);
-      }
+
+  Serial.print("🔄 Attempting MQTT reconnect to ");
+  Serial.print(broker->name);
+  Serial.print("...");
+
+  if (xSemaphoreTake(mqtt_mutex, portMAX_DELAY) != pdTRUE) return;
+
+  bool connected = (strlen(broker->username) > 0)
+      ? mqtt_client.connect(client_id, broker->username, broker->password)
+      : mqtt_client.connect(client_id);
+
+  if (connected) {
+    Serial.println(" connected ✅");
+    mqtt_client.subscribe(TOPIC_IO_CONTROL, 1);
+    mqtt_client.subscribe(TOPIC_STATUS_REQUEST, 1);
+    mqtt_client.subscribe(TOPIC_SCHEDULE, 1);
+    xSemaphoreGive(mqtt_mutex);
+
+    if (xSemaphoreTake(io_state_mutex, portMAX_DELAY) == pdTRUE) {
+      io_read_inputs();
+      xSemaphoreGive(io_state_mutex);
     }
+    mqtt_publish_io_state();
+    mqtt_publish_voltage();
+    mqtt_publish_time();
+    Serial.println("✅ Reconnected and state published");
+  } else {
+    Serial.printf(" failed ❌ rc=%d (will retry in 10s)\n", mqtt_client.state());
+    xSemaphoreGive(mqtt_mutex);
   }
 }
 
@@ -240,30 +223,38 @@ void mqtt_loop() {
 }
 
 void mqtt_publish_io_state() {
-  StaticJsonDocument<512> doc;
-  Serial.println("\n📤 Publishing I/O state...");
-  
-  // Do this inside a mutex to avoid race conditions
+  static CoopState prev_sm_state = SM_STATE_START;
+
+  // Snapshot current SM state under its mutex
+  CoopState cur_sm_state = prev_sm_state;
+  if (xSemaphoreTake(sm_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+    cur_sm_state = coop_state;
+    xSemaphoreGive(sm_mutex);
+  }
+
+  StaticJsonDocument<640> doc;
+  Serial.printf("\n📤 Publishing I/O state... SM: %s → %s\n",
+                sm_state_name(prev_sm_state), sm_state_name(cur_sm_state));
+
   if (xSemaphoreTake(io_state_mutex, portMAX_DELAY) == pdTRUE) {
-    // JsonObject inputs = doc.createNestedObject("inputs");
-    
     for (int i = 0; i < NUM_DIGITAL_INPUTS; i++) {
       doc[INPUT_NAMES[i]] = (bool)input_states[i];
     }
     for (int i = 0; i < NUM_DIGITAL_OUTPUTS; i++) {
       doc[OUTPUT_NAMES[i]] = (bool)output_states[i];
     }
-    
     xSemaphoreGive(io_state_mutex);
   }
-  // Add timestamp and online status
-  doc["timestamp"] = millis();
-  doc["unix_time"] = current_time;
-  doc["online"] = true;
-  
-  char buffer[512];
+
+  doc["sm_state_prev"] = sm_state_name(prev_sm_state);
+  doc["sm_state"]      = sm_state_name(cur_sm_state);
+  doc["timestamp"]     = millis();
+  doc["unix_time"]     = current_time;
+  doc["online"]        = true;
+
+  char buffer[640];
   serializeJson(doc, buffer);
-  
+
   if (xSemaphoreTake(mqtt_mutex, portMAX_DELAY) == pdTRUE) {
     if (mqtt_client.publish(TOPIC_IO_STATE, buffer, true)) {
       Serial.println("📤 I/O State published");
@@ -272,6 +263,8 @@ void mqtt_publish_io_state() {
     }
     xSemaphoreGive(mqtt_mutex);
   }
+
+  prev_sm_state = cur_sm_state;
 }
 
 void mqtt_publish_voltage() {
@@ -298,7 +291,7 @@ void mqtt_publish_voltage() {
   
   if (xSemaphoreTake(mqtt_mutex, portMAX_DELAY) == pdTRUE) {
     if (mqtt_client.publish(TOPIC_VOLTAGE, buffer, true)) {
-      Serial.println("📤 Voltage published");
+      // Serial.println("📤 Voltage published");
     } else {
       Serial.println("❌ Failed to publish voltage");
     }
@@ -413,7 +406,7 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     if (strcmp(command, "open") == 0) {
       sm_trigger_open();
     } else if (strcmp(command, "close") == 0) {
-      Serial.println("⚠️ 'close' command not yet implemented");
+      sm_trigger_close();
     } else {
       Serial.printf("❌ Unknown IO command: %s\n", command);
     }

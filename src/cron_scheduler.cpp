@@ -288,6 +288,8 @@ static void cronCallback(TimerHandle_t xTimer) {
 
         if (strcmp(job->label, "OPEN") == 0) {
             sm_trigger_open();
+        } else if (strcmp(job->label, "CLOSE") == 0) {
+            sm_trigger_close();
         }
     }
 

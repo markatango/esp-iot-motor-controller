@@ -165,8 +165,8 @@ int io_get_output_by_name(const char* name) {
 int io_set_output_by_name(const char* name, const uint8_t value) {
   for (int i = 0; i < NUM_DIGITAL_OUTPUTS; i++) {
     if (strcmp(OUTPUT_NAMES[i], name) == 0) {
-      digitalWrite(OUTPUT_PINS[i], value);
-      return i;  // Return the index if found
+      io_set_output(i, value);  // updates output_states[] and drives GPIO
+      return i;
     }
   }
   return -1;  // Not found

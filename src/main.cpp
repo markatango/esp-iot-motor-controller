@@ -244,10 +244,10 @@ void loop() {
     last_io_check = millis();
     // Serial.printf("io_publish_needed is %s on cpu core %d\n", io_publish_needed ? "true" : "false", (int)xPortGetCoreID());
     if (io_publish_needed) {
-        Serial.printf("Checking on cpu core %d\n", (int)xPortGetCoreID());
+        // Serial.printf("Checking on cpu core %d\n", (int)xPortGetCoreID());
         io_publish_needed = false;
         mqtt_publish_io_state();
-        Serial.println("📤 I/O state changed - published");
+        // Serial.println("📤 I/O state changed - published");
     } 
   }
   
@@ -258,7 +258,7 @@ void loop() {
   if (millis() - last_voltage_publish > VOLTAGE_PUBLISH_INTERVAL) {
     last_voltage_publish = millis();
     mqtt_publish_voltage();
-    Serial.println("📤 Voltage published (periodic)");
+    // Serial.println("📤 Voltage published (periodic)");
   }
   
   // Publish time every 60 seconds (optional)
