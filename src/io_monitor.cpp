@@ -67,6 +67,15 @@ void io_init() {
     Serial.printf("      %s: GPIO%d\n", INPUT_NAMES[i], INPUT_PINS[i]);
   }
   
+  // Prime input_states[] from actual pin readings so the SM sees correct
+  // values on its first cycle before the IO monitor task has run.
+  // Also prime prev_input_states[] to the same values so the first
+  // io_read_inputs() call doesn't falsely trigger a debounce timer reset.
+  for (int i = 0; i < NUM_DIGITAL_INPUTS; i++) {
+    input_states[i]      = digitalRead(INPUT_PINS[i]);
+    prev_input_states[i] = input_states[i];
+  }
+
   // Configure output pins
   Serial.printf("   Outputs (%d pins):\n", NUM_DIGITAL_OUTPUTS);
   for (int i = 0; i < NUM_DIGITAL_OUTPUTS; i++) {

@@ -169,6 +169,16 @@ static bool check_safety(const SMInputs& in) {
 // ============================================================================
 
 static void process_start(const SMInputs& in) {
+    // Startup recovery: single limit switch already active → skip to known state
+    if (in.uplim && !in.dnlim && !in.motor_up && !in.motor_down) {
+        do_transition(SM_STATE_OPEN);
+        return;
+    }
+    if (in.dnlim && !in.uplim && !in.motor_up && !in.motor_down) {
+        do_transition(SM_STATE_CLOSED);
+        return;
+    }
+
     // Recognise motor already running (e.g. after unexpected restart)
     if (!in.uplim && in.motor_up)   { do_transition(SM_STATE_OPENING); return; }
     if (!in.dnlim && in.motor_down) { do_transition(SM_STATE_CLOSING); return; }
@@ -205,6 +215,14 @@ static void process_opening(const SMInputs& in) {
 }
 
 static void process_open(const SMInputs& in) {
+    // Reality check: DNLIM asserted with no motor means the door is physically closed
+    // but the SM state is stale — snap to CLOSED so commands can be acted on.
+    if (in.dnlim && !in.motor_up && !in.motor_down) {
+        Serial.println("⚠️ OPEN state but DNLIM active — correcting to CLOSED");
+        do_transition(SM_STATE_CLOSED);
+        return;
+    }
+
     // Recognise motor already going down (recover from unexpected restart)
     if (!in.dnlim && in.motor_down) { do_transition(SM_STATE_CLOSING); return; }
 
@@ -234,6 +252,14 @@ static void process_closing(const SMInputs& in) {
 }
 
 static void process_closed(const SMInputs& in) {
+    // Reality check: UPLIM asserted with no motor means the door is physically open
+    // but the SM state is stale — snap to OPEN so commands can be acted on.
+    if (in.uplim && !in.motor_up && !in.motor_down) {
+        Serial.println("⚠️ CLOSED state but UPLIM active — correcting to OPEN");
+        do_transition(SM_STATE_OPEN);
+        return;
+    }
+
     // Recognise motor already going up (recover from unexpected restart)
     if (!in.uplim && in.motor_up) { do_transition(SM_STATE_OPENING); return; }
 
@@ -276,8 +302,9 @@ void sm_init() {
     }
 
     if (xSemaphoreTake(io_state_mutex, portMAX_DELAY) == pdTRUE) {
-        prev_ups = (uint8_t)io_get_input_by_name(IN_UPS);
-        prev_dns = (uint8_t)io_get_input_by_name(IN_DNS);
+        // Store logical (inverted) values so edge detection is correct from cycle 1
+        prev_ups = (io_get_input_by_name(IN_UPS) == LOW) ? HIGH : LOW;
+        prev_dns = (io_get_input_by_name(IN_DNS) == LOW) ? HIGH : LOW;
         io_set_output_by_name(OUT_ERR, HIGH);  // active-low: HIGH = extinguished at boot
         xSemaphoreGive(io_state_mutex);
     }
