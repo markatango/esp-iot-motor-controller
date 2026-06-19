@@ -24,10 +24,11 @@
 
 static const unsigned long MOTOR_TIMEOUT_MS = 30000UL;  // safety cutoff
 
-static const char* IN_UPLIM = "UPLIM";
-static const char* IN_DNLIM = "DNLIM";
-static const char* IN_UPS   = "UPS";
-static const char* IN_DNS   = "DNS";
+static const char* IN_UPLIM     = "UPLIM";
+static const char* IN_DNLIM     = "DNLIM";
+static const char* IN_UPS       = "UPS";
+static const char* IN_DNS       = "DNS";
+static const char* IN_CLR_ERROR = "CLR_ERROR";
 static const char* OUT_MUP  = "Mup";
 static const char* OUT_MDN  = "Mdn";
 static const char* OUT_ERR  = "Error";  // active-low error LED (GPIO4)
@@ -44,8 +45,9 @@ static volatile bool ev_open  = false;
 static volatile bool ev_close = false;
 
 // Previous input values for LOW→HIGH edge detection
-static uint8_t prev_ups = LOW;
-static uint8_t prev_dns = LOW;
+static uint8_t prev_ups       = LOW;
+static uint8_t prev_dns       = LOW;
+static uint8_t prev_clr_error = LOW;
 
 // Timestamp when the running motor was started (for timeout)
 static unsigned long motor_start_ms = 0;
@@ -56,8 +58,9 @@ static unsigned long motor_start_ms = 0;
 
 struct SMInputs {
     uint8_t uplim, dnlim, ups, dns;
-    bool    ups_rise;     // LOW→HIGH edge this cycle
-    bool    dns_rise;     // LOW→HIGH edge this cycle
+    bool    ups_rise;       // LOW→HIGH edge this cycle
+    bool    dns_rise;       // LOW→HIGH edge this cycle
+    bool    clr_error_rise; // LOW→HIGH edge this cycle
     uint8_t motor_up, motor_down;
     bool    ev_open, ev_close;
 };
@@ -72,10 +75,13 @@ static SMInputs read_inputs() {
         in.dns        = (io_get_input_by_name(IN_DNS)   == LOW) ? HIGH : LOW;
         in.motor_up   = (uint8_t)io_get_output_by_name(OUT_MUP);
         in.motor_down = (uint8_t)io_get_output_by_name(OUT_MDN);
-        in.ups_rise   = (in.ups == HIGH && prev_ups == LOW);
-        in.dns_rise   = (in.dns == HIGH && prev_dns == LOW);
-        prev_ups = in.ups;
-        prev_dns = in.dns;
+        uint8_t clr = (io_get_input_by_name(IN_CLR_ERROR) == LOW) ? HIGH : LOW;
+        in.ups_rise       = (in.ups == HIGH && prev_ups       == LOW);
+        in.dns_rise       = (in.dns == HIGH && prev_dns       == LOW);
+        in.clr_error_rise = (clr   == HIGH && prev_clr_error == LOW);
+        prev_ups       = in.ups;
+        prev_dns       = in.dns;
+        prev_clr_error = clr;
         xSemaphoreGive(io_state_mutex);
     }
     // Consume event flags; volatile write is sufficient for single-writer/single-reader
@@ -271,8 +277,8 @@ static void process_closed(const SMInputs& in) {
 }
 
 static void process_mot_error(const SMInputs& in) {
-    // ups LOW→HIGH edge with either motor confirmed off → reset to START
-    if (in.ups_rise && (!in.motor_up || !in.motor_down)) {
+    // CLR_ERROR LOW→HIGH edge with either motor confirmed off → reset to START
+    if (in.clr_error_rise && (!in.motor_up || !in.motor_down)) {
         stop_motors();
         set_error_led(false);
         do_transition(SM_STATE_START);
@@ -280,8 +286,8 @@ static void process_mot_error(const SMInputs& in) {
 }
 
 static void process_lim_error(const SMInputs& in) {
-    // ups LOW→HIGH edge with at least one limit no longer active → reset to START
-    if (in.ups_rise && (!in.uplim || !in.dnlim)) {
+    // CLR_ERROR LOW→HIGH edge with at least one limit no longer active → reset to START
+    if (in.clr_error_rise && (!in.uplim || !in.dnlim)) {
         stop_motors();
         set_error_led(false);
         do_transition(SM_STATE_START);
@@ -303,8 +309,9 @@ void sm_init() {
 
     if (xSemaphoreTake(io_state_mutex, portMAX_DELAY) == pdTRUE) {
         // Store logical (inverted) values so edge detection is correct from cycle 1
-        prev_ups = (io_get_input_by_name(IN_UPS) == LOW) ? HIGH : LOW;
-        prev_dns = (io_get_input_by_name(IN_DNS) == LOW) ? HIGH : LOW;
+        prev_ups       = (io_get_input_by_name(IN_UPS)       == LOW) ? HIGH : LOW;
+        prev_dns       = (io_get_input_by_name(IN_DNS)       == LOW) ? HIGH : LOW;
+        prev_clr_error = (io_get_input_by_name(IN_CLR_ERROR) == LOW) ? HIGH : LOW;
         io_set_output_by_name(OUT_ERR, HIGH);  // active-low: HIGH = extinguished at boot
         xSemaphoreGive(io_state_mutex);
     }

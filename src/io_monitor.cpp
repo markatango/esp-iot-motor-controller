@@ -25,7 +25,7 @@ const char* INPUT_NAMES[NUM_DIGITAL_INPUTS] = {
     "DNLIM",   // Down limit switch
     "UPS",     // Upper position sensor
     "DNS",     // Down position sensor
-    "UPI",     // Upper input
+    "CLR_ERROR", // Error clear input
     "DNI"      // Down input
 };
 
