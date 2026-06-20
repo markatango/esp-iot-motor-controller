@@ -32,6 +32,7 @@ extern SemaphoreHandle_t sm_mutex;
 void        sm_init();
 void        sm_trigger_open();   // signal OPEN event (WEB or CRON)
 void        sm_trigger_close();  // signal CLOSE event (WEB or CRON)
+void        sm_trigger_reset();  // signal CLR_ERROR event (WEB)
 const char* sm_state_name(CoopState state);
 const char* sm_get_state_string();
 void        state_machine_task(void* parameter);

@@ -434,6 +434,8 @@ void mqtt_callback(char* topic, byte* payload, unsigned int length) {
       sm_trigger_open();
     } else if (strcmp(command, "close") == 0) {
       sm_trigger_close();
+    } else if (strcmp(command, "reset") == 0) {
+      sm_trigger_reset();
     } else {
       Serial.printf("❌ Unknown IO command: %s\n", command);
     }

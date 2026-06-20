@@ -43,6 +43,7 @@ SemaphoreHandle_t sm_mutex   = NULL;
 // Event flags — written by external callers, consumed once per SM cycle
 static volatile bool ev_open  = false;
 static volatile bool ev_close = false;
+static volatile bool ev_reset = false;
 
 // Previous input values for LOW→HIGH edge detection
 static uint8_t prev_ups       = LOW;
@@ -78,7 +79,8 @@ static SMInputs read_inputs() {
         uint8_t clr = (io_get_input_by_name(IN_CLR_ERROR) == LOW) ? HIGH : LOW;
         in.ups_rise       = (in.ups == HIGH && prev_ups       == LOW);
         in.dns_rise       = (in.dns == HIGH && prev_dns       == LOW);
-        in.clr_error_rise = (clr   == HIGH && prev_clr_error == LOW);
+        in.clr_error_rise = (clr == HIGH && prev_clr_error == LOW) || ev_reset;
+        ev_reset = false;
         prev_ups       = in.ups;
         prev_dns       = in.dns;
         prev_clr_error = clr;
@@ -328,6 +330,11 @@ void sm_trigger_open() {
 void sm_trigger_close() {
     ev_close = true;
     Serial.println("📥 SM: close event queued");
+}
+
+void sm_trigger_reset() {
+    ev_reset = true;
+    Serial.println("📥 SM: reset event queued");
 }
 
 const char* sm_state_name(CoopState state) {
