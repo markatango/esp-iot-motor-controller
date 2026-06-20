@@ -10,9 +10,11 @@
 // CONFIGURATION
 // ====================================================================
 
-const char* ntp_server = "pool.ntp.org";
-const long gmt_offset_sec = -8 * 3600;  // PST (UTC-8)
-const int daylight_offset_sec = 3600;    // 1 hour for DST
+// POSIX TZ string — encodes Pacific time with US DST rules.
+// Overridden at runtime when the MQTT schedule payload carries a timezone field.
+static const char* DEFAULT_TZ  = "PST8PDT,M3.2.0,M11.1.0";
+static const char* NTP_SERVER1 = "pool.ntp.org";
+static const char* NTP_SERVER2 = "time.nist.gov";
 
 // ====================================================================
 // GLOBAL VARIABLES
@@ -27,10 +29,12 @@ SemaphoreHandle_t time_and_schedule_mutex = NULL;
 
 void time_sync_init() {
   Serial.println("\n🕐 Initializing time synchronization...");
-  Serial.printf("   NTP Server: %s\n", ntp_server);
-  Serial.printf("   GMT Offset: %ld seconds (%.1f hours)\n", gmt_offset_sec, gmt_offset_sec / 3600.0);
-  
-  configTime(gmt_offset_sec, daylight_offset_sec, ntp_server);
+  Serial.printf("   NTP: %s  %s\n", NTP_SERVER1, NTP_SERVER2);
+  Serial.printf("   TZ:  %s\n", DEFAULT_TZ);
+
+  // configTzTime sets the POSIX TZ env variable and calls tzset() internally,
+  // so localtime_r() and getLocalTime() handle DST transitions correctly.
+  configTzTime(DEFAULT_TZ, NTP_SERVER1, NTP_SERVER2);
 
   // Create mutex
   time_and_schedule_mutex = xSemaphoreCreateMutex();

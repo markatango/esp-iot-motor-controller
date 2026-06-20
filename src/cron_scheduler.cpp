@@ -140,7 +140,7 @@ void applyScheduleFromMQTT(const char* payload, size_t length) {
         return;
     }
 
-    StaticJsonDocument<256> doc;
+    StaticJsonDocument<384> doc;
     DeserializationError err = deserializeJson(doc, payload, length);
     if (err) {
         Serial.printf("[SCHEDULE] JSON parse error: %s\n", err.c_str());
@@ -151,6 +151,16 @@ void applyScheduleFromMQTT(const char* payload, size_t length) {
         !doc.containsKey("open_enabled") || !doc.containsKey("close_enabled")) {
         Serial.println("[SCHEDULE] ERROR: missing required fields.");
         return;
+    }
+
+    // Apply timezone before computing any local-time deltas
+    if (doc.containsKey("timezone")) {
+        const char* tz_str = doc["timezone"];
+        if (tz_str && strlen(tz_str) > 0) {
+            setenv("TZ", tz_str, 1);
+            tzset();
+            Serial.printf("[SCHEDULE] TZ set to: %s\n", tz_str);
+        }
     }
 
     const char* open_time     = doc["open_time"];
@@ -235,13 +245,13 @@ static bool parseHHMM(const char* hhmm, uint8_t& hour, uint8_t& min) {
 static uint32_t secondsUntilNext(uint8_t hour, uint8_t min) {
     time_t now = time(nullptr);
     struct tm t;
-    gmtime_r(&now, &t);
+    localtime_r(&now, &t);   // decompose in local time (respects TZ + DST)
 
     struct tm target = t;
-    target.tm_hour   = hour;
-    target.tm_min    = min;
-    target.tm_sec    = 0;
-    target.tm_isdst  = 0;
+    target.tm_hour  = hour;
+    target.tm_min   = min;
+    target.tm_sec   = 0;
+    target.tm_isdst = -1;    // let mktime determine DST for the target moment
 
     time_t target_t = mktime(&target);
     if (target_t <= now) {
@@ -271,20 +281,19 @@ static void cronCallback(TimerHandle_t xTimer) {
     if (!job->enabled) {
         Serial.printf("[CRON][%s] Triggered but job is disabled — no action.\n", job->label);
     } else {
+        // Record command for external readers
         if (xSemaphoreTake(g_coop_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-            if (g_coop_command != 0) {
-                Serial.printf("[CRON][%s] Triggered but g_coop_command=%d (not 0) — no action.\n",
-                              job->label, g_coop_command);
-            } else {
-                g_coop_command = job->command;
-                Serial.printf("[CRON][%s] Triggered — g_coop_command set to %d.\n",
-                              job->label, job->command);
-            }
+            g_coop_command = job->command;
             xSemaphoreGive(g_coop_mutex);
-        } else {
-            Serial.printf("[CRON][%s] ERROR: could not acquire mutex — action skipped.\n",
-                          job->label);
         }
+
+        // Snapshot SM state for diagnostics before triggering
+        CoopState sm_state = SM_STATE_START;
+        if (xSemaphoreTake(sm_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            sm_state = coop_state;
+            xSemaphoreGive(sm_mutex);
+        }
+        Serial.printf("[CRON][%s] Triggered — SM: %s\n", job->label, sm_state_name(sm_state));
 
         if (strcmp(job->label, "OPEN") == 0) {
             sm_trigger_open();
@@ -297,7 +306,7 @@ static void cronCallback(TimerHandle_t xTimer) {
     uint32_t secs = secondsUntilNext(job->target_hour, job->target_min);
     xTimerChangePeriod(xTimer, pdMS_TO_TICKS(secs * 1000UL), 0);
     xTimerStart(xTimer, 0);
-    Serial.printf("[CRON][%s] Re-armed — next trigger in %lus (%02d:%02d UTC).\n",
+    Serial.printf("[CRON][%s] Re-armed — next trigger in %lus (%02d:%02d local).\n",
                   job->label, secs, job->target_hour, job->target_min);
 }
 
@@ -331,7 +340,7 @@ static void armCronJob(CronJob& job, uint8_t hour, uint8_t min, bool enabled) {
         period = pdMS_TO_TICKS(60000UL);
     } else {
         uint32_t secs = secondsUntilNext(hour, min);
-        Serial.printf("[CRON][%s] Armed for %02d:%02d UTC — triggers in %lus.\n",
+        Serial.printf("[CRON][%s] Armed for %02d:%02d local — triggers in %lus.\n",
                       job.label, hour, min, secs);
         period = pdMS_TO_TICKS(secs * 1000UL);
     }
