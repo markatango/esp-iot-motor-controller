@@ -5,6 +5,7 @@
 
 #include "time_sync.h"
 #include "cron_scheduler.h"
+#include "state_machine.h"
 
 // ====================================================================
 // CONFIGURATION
@@ -85,24 +86,28 @@ void time_sync_task(void* parameter) {
   const TickType_t frequency = pdMS_TO_TICKS(60000);  // Update every 60 seconds
   
   while (1) {
-    // Update current time
     if (xSemaphoreTake(time_and_schedule_mutex, portMAX_DELAY) == pdTRUE) {
       time(&current_time);
-      
-      struct tm timeinfo;
-      if (getLocalTime(&timeinfo)) {
-        if (!ntp_isSynced() && current_time > 1577836800L) {
-          ntp_setSynced(true);
+
+      // Always mark NTP as synced when the clock is valid — even during a freeze
+      // so the cron scheduler can transition out of polling mode.
+      if (!ntp_isSynced() && current_time > 1577836800L) {
+        ntp_setSynced(true);
+      }
+
+      if (!g_sm_freeze) {
+        struct tm timeinfo;
+        if (getLocalTime(&timeinfo)) {
+          char time_str[64];
+          strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", &timeinfo);
+          Serial.printf("🕐 Time: %s (Unix: %ld)\n", time_str, current_time);
+        } else {
+          Serial.println("⚠️  Failed to get local time");
         }
-        char time_str[64];
-        strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", &timeinfo);
-        Serial.printf("🕐 Time: %s (Unix: %ld)\n", time_str, current_time);
-      } else {
-        Serial.println("⚠️  Failed to get local time");
       }
       xSemaphoreGive(time_and_schedule_mutex);
     }
-    
+
     vTaskDelayUntil(&last_wake_time, frequency);
   }
 }

@@ -268,7 +268,7 @@ void loop() {
   if (millis() - last_time_publish > TIME_PUBLISH_INTERVAL) {
     last_time_publish = millis();
     mqtt_publish_time();
-    Serial.println("📤 Time published (periodic)");
+    if (!g_sm_freeze) Serial.println("📤 Time published (periodic)");
   }
 
   if(status_request_pending) {

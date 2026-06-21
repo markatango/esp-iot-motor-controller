@@ -268,6 +268,7 @@ void mqtt_publish_io_state() {
 }
 
 void mqtt_publish_voltage() {
+  if (g_sm_freeze) return;
   StaticJsonDocument<256> doc;
   
   if (xSemaphoreTake(voltage_mutex, portMAX_DELAY) == pdTRUE) {
@@ -300,6 +301,7 @@ void mqtt_publish_voltage() {
 }
 
 void mqtt_publish_time() {
+  if (g_sm_freeze) return;
   StaticJsonDocument<256> doc;
   
   struct tm timeinfo;

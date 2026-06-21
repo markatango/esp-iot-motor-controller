@@ -28,6 +28,7 @@ typedef enum {
 
 extern CoopState         coop_state;
 extern SemaphoreHandle_t sm_mutex;
+extern volatile bool     g_sm_freeze;  // set on error entry, cleared on START
 
 void        sm_init();
 void        sm_trigger_open();   // signal OPEN event (WEB or CRON)

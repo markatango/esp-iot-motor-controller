@@ -24,6 +24,7 @@ struct CronJob {
     uint8_t       target_hour;
     uint8_t       target_min;
     bool          enabled;
+    bool          polling;       // true while using 60s NTP-wait polling; false in exact mode
     const char*   label;
 };
 
@@ -37,8 +38,8 @@ static SemaphoreHandle_t g_coop_mutex   = nullptr;
 static volatile bool     g_ntp_synced   = false;
 static SemaphoreHandle_t g_ntp_mutex    = nullptr;
 
-static CronJob s_open_job  = { nullptr, 6, 0, 0, false, "OPEN"  };
-static CronJob s_close_job = { nullptr, 9, 0, 0, false, "CLOSE" };
+static CronJob s_open_job  = { nullptr, 6, 0, 0, false, false, "OPEN"  };
+static CronJob s_close_job = { nullptr, 9, 0, 0, false, false, "CLOSE" };
 
 // ============================================================================
 // Private Helpers — forward declarations
@@ -273,13 +274,35 @@ static void cronCallback(TimerHandle_t xTimer) {
     if (!ntp_isSynced()) {
         Serial.printf("[CRON][%s] Clock not valid — action deferred. Retrying in 60s.\n",
                       job->label);
-        xTimerChangePeriod(xTimer, pdMS_TO_TICKS(60000UL), 0);
+        job->polling = true;
+        xTimerChangePeriod(xTimer, ((TickType_t)(60) * (TickType_t)(configTICK_RATE_HZ)), 0);
         xTimerStart(xTimer, 0);
         return;
     }
 
+    // Get current local time for log messages
+    time_t now_t = time(nullptr);
+    struct tm now_tm;
+    localtime_r(&now_t, &now_tm);
+    char now_str[20];
+    strftime(now_str, sizeof(now_str), "%H:%M:%S", &now_tm);
+
+    // Polling-to-exact transition: NTP just became valid.
+    // Do NOT fire the command — we don't know if the target time has passed.
+    // Just re-arm for the next correct occurrence.
+    if (job->polling) {
+        job->polling = false;
+        uint32_t secs = secondsUntilNext(job->target_hour, job->target_min);
+        xTimerChangePeriod(xTimer, ((TickType_t)(secs) * (TickType_t)(configTICK_RATE_HZ)), 0);
+        xTimerStart(xTimer, 0);
+        Serial.printf("[CRON][%s] NTP synced at %s — transitioning to exact mode, fires in %lus (%02d:%02d local).\n",
+                      job->label, now_str, secs, job->target_hour, job->target_min);
+        return;
+    }
+
     if (!job->enabled) {
-        Serial.printf("[CRON][%s] Triggered but job is disabled — no action.\n", job->label);
+        Serial.printf("[CRON][%s] Triggered at %s but job is disabled — no action.\n",
+                      job->label, now_str);
     } else {
         // Record command for external readers
         if (xSemaphoreTake(g_coop_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
@@ -293,7 +316,8 @@ static void cronCallback(TimerHandle_t xTimer) {
             sm_state = coop_state;
             xSemaphoreGive(sm_mutex);
         }
-        Serial.printf("[CRON][%s] Triggered — SM: %s\n", job->label, sm_state_name(sm_state));
+        Serial.printf("[CRON][%s] Triggered at %s — SM: %s\n",
+                      job->label, now_str, sm_state_name(sm_state));
 
         if (strcmp(job->label, "OPEN") == 0) {
             sm_trigger_open();
@@ -304,7 +328,7 @@ static void cronCallback(TimerHandle_t xTimer) {
 
     // Re-arm for the same time tomorrow
     uint32_t secs = secondsUntilNext(job->target_hour, job->target_min);
-    xTimerChangePeriod(xTimer, pdMS_TO_TICKS(secs * 1000UL), 0);
+    xTimerChangePeriod(xTimer, ((TickType_t)(secs) * (TickType_t)(configTICK_RATE_HZ)), 0);
     xTimerStart(xTimer, 0);
     Serial.printf("[CRON][%s] Re-armed — next trigger in %lus (%02d:%02d local).\n",
                   job->label, secs, job->target_hour, job->target_min);
@@ -319,10 +343,13 @@ static void armCronJob(CronJob& job, uint8_t hour, uint8_t min, bool enabled) {
     job.target_min  = min;
     job.enabled     = enabled;
 
-    // Tear down any existing timer cleanly
+    // Tear down any existing timer cleanly.
+    // portMAX_DELAY ensures the stop/delete commands actually reach the timer
+    // daemon — a short timeout can silently fail, leaving a ghost timer that
+    // fires alongside the newly created one (double-trigger symptom).
     if (job.timer != nullptr) {
-        xTimerStop(job.timer, pdMS_TO_TICKS(100));
-        xTimerDelete(job.timer, pdMS_TO_TICKS(100));
+        xTimerStop(job.timer, portMAX_DELAY);
+        xTimerDelete(job.timer, portMAX_DELAY);
         job.timer = nullptr;
     }
 
@@ -337,12 +364,14 @@ static void armCronJob(CronJob& job, uint8_t hour, uint8_t min, bool enabled) {
         // once ntp_isSynced() returns true.
         Serial.printf("[CRON][%s] Clock not ready — polling every 60s until sync.\n",
                       job.label);
-        period = pdMS_TO_TICKS(60000UL);
+        period = ((TickType_t)(60) * (TickType_t)(configTICK_RATE_HZ));
+        job.polling = true;
     } else {
         uint32_t secs = secondsUntilNext(hour, min);
         Serial.printf("[CRON][%s] Armed for %02d:%02d local — triggers in %lus.\n",
                       job.label, hour, min, secs);
-        period = pdMS_TO_TICKS(secs * 1000UL);
+        period = ((TickType_t)(secs) * (TickType_t)(configTICK_RATE_HZ));
+        job.polling = false;
     }
 
     job.timer = xTimerCreate(

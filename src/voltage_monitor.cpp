@@ -4,6 +4,7 @@
  */
 
 #include "voltage_monitor.h"
+#include "state_machine.h"
 
 // ====================================================================
 // CONFIGURATION
@@ -115,17 +116,18 @@ void voltage_monitor_task(void* parameter) {
   
   while (1) {
     voltage_read_all();
-    
-    // Debug output
-    if (xSemaphoreTake(voltage_mutex, portMAX_DELAY) == pdTRUE) {
-      Serial.printf("⚡ Battery: %.2fV (%s) | Solar: %.2fV | Charging: %s\n",
-                    battery_voltage,
-                    voltage_get_battery_status(battery_voltage),
-                    solar_voltage,
-                    voltage_is_solar_charging(solar_voltage, battery_voltage) ? "Yes" : "No");
-      xSemaphoreGive(voltage_mutex);
+
+    if (!g_sm_freeze) {
+      if (xSemaphoreTake(voltage_mutex, portMAX_DELAY) == pdTRUE) {
+        Serial.printf("⚡ Battery: %.2fV (%s) | Solar: %.2fV | Charging: %s\n",
+                      battery_voltage,
+                      voltage_get_battery_status(battery_voltage),
+                      solar_voltage,
+                      voltage_is_solar_charging(solar_voltage, battery_voltage) ? "Yes" : "No");
+        xSemaphoreGive(voltage_mutex);
+      }
     }
-    
+
     vTaskDelayUntil(&last_wake_time, frequency);
   }
 }

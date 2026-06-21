@@ -39,6 +39,7 @@ static const char* OUT_ERR  = "Error";  // active-low error LED (GPIO4)
 
 CoopState         coop_state = SM_STATE_START;
 SemaphoreHandle_t sm_mutex   = NULL;
+volatile bool     g_sm_freeze = false;
 
 // Event flags — written by external callers, consumed once per SM cycle
 static volatile bool ev_open  = false;
@@ -138,10 +139,39 @@ static bool motor_timed_out() {
 }
 
 // ============================================================================
+// ERROR DIAGNOSTICS
+// ============================================================================
+
+static void dump_io_state() {
+    if (xSemaphoreTake(io_state_mutex, pdMS_TO_TICKS(50)) != pdTRUE) {
+        Serial.println("❌ [FREEZE] Could not read I/O state for dump");
+        return;
+    }
+    Serial.println("=== I/O STATE AT ERROR ENTRY ===");
+    Serial.print("  Inputs  (raw): ");
+    for (int i = 0; i < NUM_DIGITAL_INPUTS; i++) {
+        Serial.printf("%s=%d ", INPUT_NAMES[i], input_states[i]);
+    }
+    Serial.println();
+    Serial.print("  Outputs (raw): ");
+    for (int i = 0; i < NUM_DIGITAL_OUTPUTS; i++) {
+        Serial.printf("%s=%d ", OUTPUT_NAMES[i], output_states[i]);
+    }
+    Serial.println();
+    Serial.println("================================");
+    xSemaphoreGive(io_state_mutex);
+}
+
+// ============================================================================
 // STATE TRANSITION HELPER
 // ============================================================================
 
 static void do_transition(CoopState next) {
+    if (next == SM_STATE_MOT_ERROR || next == SM_STATE_LIM_ERROR) {
+        g_sm_freeze = true;
+    } else if (next == SM_STATE_START) {
+        g_sm_freeze = false;
+    }
     if (xSemaphoreTake(sm_mutex, portMAX_DELAY) == pdTRUE) {
         coop_state = next;
         xSemaphoreGive(sm_mutex);
@@ -158,6 +188,7 @@ static bool check_safety(const SMInputs& in) {
     if (in.motor_up && in.motor_down) {
         Serial.println("⚠️ MOT ERROR: both motors active simultaneously!");
         stop_motors();
+        dump_io_state();
         set_error_led(true);
         do_transition(SM_STATE_MOT_ERROR);
         return true;
@@ -165,6 +196,7 @@ static bool check_safety(const SMInputs& in) {
     if (in.uplim && in.dnlim) {
         Serial.println("⚠️ LIM ERROR: both limit switches active!");
         stop_motors();
+        dump_io_state();
         set_error_led(true);
         do_transition(SM_STATE_LIM_ERROR);
         return true;
@@ -217,6 +249,7 @@ static void process_opening(const SMInputs& in) {
     if (motor_timed_out()) {
         Serial.printf("⚠️ OPENING timeout (%lus)!\n", MOTOR_TIMEOUT_MS / 1000);
         stop_motors();
+        dump_io_state();
         set_error_led(true);
         do_transition(SM_STATE_MOT_ERROR);
     }
@@ -254,6 +287,7 @@ static void process_closing(const SMInputs& in) {
     if (motor_timed_out()) {
         Serial.printf("⚠️ CLOSING timeout (%lus)!\n", MOTOR_TIMEOUT_MS / 1000);
         stop_motors();
+        dump_io_state();
         set_error_led(true);
         do_transition(SM_STATE_MOT_ERROR);
     }
