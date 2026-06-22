@@ -22,3 +22,5 @@ certs/
 *.bin
 *.elf
 *.map
+include/broker_config.h
+src/broker_config.cpp
