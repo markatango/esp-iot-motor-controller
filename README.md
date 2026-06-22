@@ -2,6 +2,8 @@
 
 A modular, multi-threaded ESP32 firmware for automated chicken coop monitoring and control. The system monitors digital I/O (limit switches, command inputs), battery and solar voltages, synchronizes time via NTP, runs a cron-based door schedule, and communicates with a backend server over MQTT with SSL/TLS mutual authentication.
 
+**Related repository:** [chickencoop_ubuntu](https://github.com/markatango/chickencoop_ubuntu) — the Ubuntu web server and UI that communicates with this firmware over MQTT. See [MQTT_API.md](MQTT_API.md) for the shared interface contract.
+
 ---
 
 ## Table of Contents
@@ -10,7 +12,7 @@ A modular, multi-threaded ESP32 firmware for automated chicken coop monitoring a
 - [Hardware](#hardware)
 - [Software Architecture](#software-architecture)
 - [Modules](#modules)
-- [MQTT Interface](#mqtt-interface)
+- [MQTT Interface](MQTT_API.md)
 - [FreeRTOS Task Layout](#freertos-task-layout)
 - [Getting Started](#getting-started)
 - [Configuration](#configuration)
@@ -44,7 +46,7 @@ A modular, multi-threaded ESP32 firmware for automated chicken coop monitoring a
 All inputs use internal pull-ups and are active-LOW: a physical switch closure pulls the pin to GND (logical HIGH after inversion at the state machine boundary).
 
 | Name | GPIO | Description |
-|------|------|-------------|
+| --- | --- | --- |
 | UPLIM | 14 | Upper (open) limit switch |
 | DNLIM | 27 | Lower (closed) limit switch |
 | UPS | 13 | Up position sensor |
@@ -69,7 +71,7 @@ All inputs use internal pull-ups and are active-LOW: a physical switch closure p
 #### Analog Inputs (ADC)
 
 | Name | GPIO | Description | Voltage Divider Ratio |
-|------|------|-------------|----------------------|
+| --- | --- | --- | --- |
 | Battery | 34 | Battery voltage | 5.7× (47kΩ + 10kΩ) |
 | Solar | 35 | Solar panel voltage | 10.09× (100kΩ + 11kΩ) |
 
@@ -109,7 +111,7 @@ The firmware is organized as a set of independent modules. Each module owns its 
 All shared data is protected by FreeRTOS mutexes:
 
 | Mutex | Defined In | Protects |
-|-------|-----------|----------|
+| --- | --- | --- |
 | `io_state_mutex` | io_monitor | `input_states[]`, `output_states[]`, GPIO operations |
 | `voltage_mutex` | voltage_monitor | `battery_voltage`, `solar_voltage` |
 | `mqtt_mutex` | mqtt_manager | MQTT client operations |
@@ -184,7 +186,7 @@ Handles all MQTT operations: SSL/TLS setup, connection, reconnection, topic subs
 **MQTT Topics:**
 
 | Topic | Direction | Description |
-|-------|-----------|-------------|
+| --- | --- | --- |
 | `chickencoop/io/state` | Publish | Current I/O and SM state (on change, on connect, on request) |
 | `chickencoop/voltages` | Publish | Battery and solar voltages (every 60s, on connect, on request) |
 | `chickencoop/time` | Publish | Current time (every 60s, on connect, on request) |
@@ -379,7 +381,7 @@ In `START`, the SM reads the physical limit switches:
 ## FreeRTOS Task Layout
 
 | Task | Function | Core | Priority | Interval |
-|------|----------|------|----------|----------|
+| --- | --- | --- | --- | --- |
 | I/O Monitor | `io_monitor_task` | 1 | 2 | 10ms |
 | State Machine | `state_machine_task` | 1 | 2 | 50ms |
 | Time Sync | `time_sync_task` | 0 | 1 | 60s |
@@ -406,14 +408,15 @@ All periodic tasks use `vTaskDelayUntil()` for drift-free fixed-rate execution.
    cd chickencoop-monitor
    ```
 
-2. Create the required configuration files (see [Configuration](#configuration)):
-   ```
-   include/secrets.h
-   include/broker_config.h
-   include/broker_config.cpp
-   include/client.h
-   include/client.cpp
-   ```
+2. Create the required configuration files from the included examples (see [Configuration](#configuration)):
+
+   | File to create | Copy from |
+   | --- | --- |
+   | `include/secrets.h` | *(no example — see template below)* |
+   | `include/broker_config.h` | `include/broker_config.example.h` |
+   | `src/broker_config.cpp` | `src/broker_config.example.cpp` |
+   | `include/client.h` | *(no example — see template below)* |
+   | `src/client.cpp` | *(no example — contains private key)* |
 
 3. Build and upload:
    ```bash
@@ -538,15 +541,16 @@ Ensure sensitive files are never committed:
 
 ```gitignore
 include/secrets.h
-include/broker_config.cpp
-include/client.cpp
+include/broker_config.h
+src/broker_config.cpp
+**/client.*
 .pio/
 ```
 
 ### Adjustable Parameters
 
 | Parameter | File | Default | Description |
-|-----------|------|---------|-------------|
+| --- | --- | --- | --- |
 | `INPUT_PINS[]` | io_monitor.cpp | {14,27,13,12,22,23} | Input GPIO assignments |
 | `OUTPUT_PINS[]` | io_monitor.cpp | {4,5,18,19,25,33,2} | Output GPIO assignments |
 | `DEBOUNCE_DELAY` | io_monitor.cpp | 50ms | Input debounce time |
@@ -563,10 +567,11 @@ include/client.cpp
 ## Security
 
 - SSL/TLS mutual authentication (mTLS) is used for all MQTT connections
-- Certificates are stored in separate `.cpp` files excluded from version control
-- WiFi credentials are stored in `secrets.h`, also excluded from version control
-- The `broker_config.h` and `client.h` interface headers are safe to commit — they contain no credentials
-- Never commit `broker_config.cpp`, `client.cpp`, or `secrets.h`
+- WiFi credentials are stored in `include/secrets.h` — excluded from version control
+- Broker CA certificates, broker URLs/IPs, and credentials are in `include/broker_config.h` and `src/broker_config.cpp` — both excluded from version control
+- Client certificate and private key are in `include/client.h` and `src/client.cpp` — both excluded from version control
+- Example/template versions of `broker_config.*` (with all sensitive values replaced by placeholders) are included in the repository as `broker_config.example.h` and `broker_config.example.cpp`
+- Never commit `secrets.h`, `broker_config.h`, `broker_config.cpp`, `client.h`, or `client.cpp`
 
 ---
 
