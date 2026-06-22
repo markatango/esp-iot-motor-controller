@@ -66,13 +66,15 @@ void mqtt_setup_ssl(const BrokerConfig* broker, const ClientConfig* client) {
     return;
   }
   
-  // Set CA certificate to verify the broker
-  if (client->ca_cert != nullptr) {
-    esp_client.setCACert(client->ca_cert);
-    Serial.println("✅ CA Certificate set from client config");
-  } else if (broker->server_cert != nullptr) {
+  // Set CA certificate to verify the broker — broker config is authoritative.
+  // client->ca_cert is a per-client override for cases where a broker uses a
+  // different CA than what is in the broker config (rare; normally leave nullptr).
+  if (broker->server_cert != nullptr) {
     esp_client.setCACert(broker->server_cert);
     Serial.println("✅ CA Certificate set from broker config");
+  } else if (client->ca_cert != nullptr) {
+    esp_client.setCACert(client->ca_cert);
+    Serial.println("✅ CA Certificate set from client config (override)");
   } else {
     Serial.println("⚠️  WARNING: No CA certificate - connection will be insecure!");
   }

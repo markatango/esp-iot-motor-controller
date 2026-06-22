@@ -83,7 +83,7 @@ All inputs use internal pull-ups and are active-LOW: a physical switch closure p
 
 The firmware is organized as a set of independent modules. Each module owns its data, its mutex, and its FreeRTOS task. Modules communicate through well-defined, thread-safe accessor functions rather than direct access to each other's globals.
 
-```
+```text
 ┌─────────────────────────────────────────────────────────┐
 │                       main.cpp                          │
 │   WiFi management, setup orchestration, main loop       │
@@ -122,7 +122,7 @@ All shared data is protected by FreeRTOS mutexes:
 
 **Mutex acquisition order** (when more than one is needed, always acquire in this order to prevent deadlock):
 
-```
+```text
 io_state_mutex → sm_mutex → voltage_mutex → time_and_schedule_mutex → mqtt_mutex
 ```
 
@@ -302,7 +302,7 @@ A full FSM for automated chicken coop door motor control. Runs as a FreeRTOS tas
 
 #### State Transitions
 
-```
+```text
                   ┌──────────────────────────────────────────────────────────┐
                   │   Any state: both limits active → LIM_ERROR              │
                   └──────────────────────────────────────────────────────────┘
@@ -403,6 +403,7 @@ All periodic tasks use `vTaskDelayUntil()` for drift-free fixed-rate execution.
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/yourusername/chickencoop-monitor.git
    cd chickencoop-monitor
@@ -419,6 +420,7 @@ All periodic tasks use `vTaskDelayUntil()` for drift-free fixed-rate execution.
    | `src/client.cpp` | *(no example — contains private key)* |
 
 3. Build and upload:
+
    ```bash
    pio run --target upload
    pio device monitor
@@ -501,7 +503,8 @@ struct ClientConfig {
     const char* name;
     const char* cert;      // Client certificate PEM
     const char* key;       // Private key PEM
-    const char* ca_cert;   // Optional: override broker CA
+    const char* ca_cert;   // Normally nullptr — override only when a broker uses
+                           // a different CA than what is in its BrokerConfig entry
     const char* description;
 };
 
